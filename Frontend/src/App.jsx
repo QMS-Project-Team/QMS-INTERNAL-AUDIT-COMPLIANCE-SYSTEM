@@ -22,7 +22,7 @@ function App() {
 
   try {
   const response = await axios.post(
-    'http://192.168.1.15:8000/api/login/',
+    'http://127.0.0.1:8000/api/login/',
     loginData
   )
 
