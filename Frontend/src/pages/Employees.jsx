@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import Sidebar from "../components/Sidebar";
 
 class Employees extends Component {
     constructor(props) {
@@ -36,6 +37,8 @@ class Employees extends Component {
 
     render() {
         return (
+            <>
+            <Sidebar />
             <div className="employees-page">
 
                 <div className="page-header">
@@ -128,6 +131,8 @@ class Employees extends Component {
                 </div>
 
             </div>
+            </>
+
         );
     }
 }

@@ -1,9 +1,23 @@
 import React, { Component } from "react";
-
+import Sidebar from "../components/Sidebar";
 class Dashboard extends Component {
 
+    constructor(props) {
+        super(props)
+
+        const user = JSON.parse(
+            localStorage.getItem('user')
+        )
+
+        this.state = {
+            user: user
+        }
+    }
     render() {
+        const { user } = this.state
     return (
+        <>
+        < Sidebar />
         <div className="dashboard-layout">
 
             {/* <Sidebar onEmployeesClick={this.showEmployees} /> */}
@@ -13,81 +27,24 @@ class Dashboard extends Component {
                 <div className="dashboard-header">
                     <div>
                         <h1>Dashboard</h1>
-                        <p>Welcome back, Harjot 👋</p>
+                        <p>Welcome back, {user?.username} 👋</p>
                     </div>
 
                     <div className="user-profile">
-                        <span>Harjot</span>
+                        <span>
+                            <p>
+                            Role: {user?.role}
+                            </p>
+                        </span>
                     </div>
                 </div>
 
-                <div className="stats-container">
-
-                    <div className="stat-card">
-                        <h3>Total Audits</h3>
-                        <p>24</p>
-                    </div>
-
-                    <div className="stat-card">
-                        <h3>Completed</h3>
-                        <p>18</p>
-                    </div>
-
-                    <div className="stat-card">
-                        <h3>Pending</h3>
-                        <p>4</p>
-                    </div>
-
-                    <div className="stat-card">
-                        <h3>Non-Conformities</h3>
-                        <p>2</p>
-                    </div>
-
-                </div>
-
-                <div className="recent-audits">
-
-                    <h2>Recent Audits</h2>
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Audit</th>
-                                <th>Department</th>
-                                <th>Auditor</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <tr>
-                                <td>ISO 9001 Audit</td>
-                                <td>Production</td>
-                                <td>John</td>
-                                <td>Completed</td>
-                            </tr>
-
-                            <tr>
-                                <td>Internal Process Audit</td>
-                                <td>HR</td>
-                                <td>Sarah</td>
-                                <td>Pending</td>
-                            </tr>
-
-                            <tr>
-                                <td>Quality Compliance</td>
-                                <td>Quality</td>
-                                <td>Mike</td>
-                                <td>Completed</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                </div>
+ 
 
             </main>
 
         </div>
+        </>
     );
     }
 }

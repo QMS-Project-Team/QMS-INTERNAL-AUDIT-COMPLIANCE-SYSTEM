@@ -51,10 +51,18 @@ def login(request):
 
     refresh = RefreshToken.for_user(user)
 
+    if user.is_superuser:
+        role = "admin"
+    else:
+        role = user.employee.role
+
     return Response(
         {
+            "user": {
+                "username": user.username,
+                "role": role
+            },
             "message": "Login successful",
-            "username": user.username,
             "access": str(refresh.access_token),
             "refresh": str(refresh)
         },
