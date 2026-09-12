@@ -8,6 +8,8 @@ import {
 import Login from "./Login";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
+import Projects from "./pages/Projects";
+import ProtectedRoute from "./ProtectedRoute";
 
 function App() {
 
@@ -20,13 +22,7 @@ function App() {
                 <Route
                     path="/"
                     element={<Login />}
-                />
-
-                <Route
-                    path="/login"
-                    element={<Login />}
-                />
-
+                /> 
                 {/* Dashboard */}
                 <Route
                     path="/dashboard"
@@ -36,9 +32,17 @@ function App() {
                 {/* Employee */}
                 <Route
                     path="/employees"
-                    element={<Employees />}
+                    element={<ProtectedRoute allowedRoles={["Director"]}>
+                            <Employees />
+                        </ProtectedRoute>}
                 />
-
+                {/* Employee */}
+                <Route
+                    path="/projects"
+                    element={<ProtectedRoute allowedRoles={["Director"]}>
+                            <Projects />
+                        </ProtectedRoute>}
+                />
                 {/* Unknown URL
                 <Route
                     path="*"

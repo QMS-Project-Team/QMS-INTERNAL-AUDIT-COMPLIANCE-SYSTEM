@@ -14,7 +14,7 @@ from .serializers import EmployeeSerializer
 # GET /api/employees/
 # POST /api/employees/
 @api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def employee_list(request):
 
     employees = Employee.objects.all()
@@ -80,7 +80,7 @@ def employee_detail(request, id):
 
     except Employee.DoesNotExist:
         return Response(
-            {"message": "Employee not found"},
+                {"message": "Employee not found"},
             status=status.HTTP_404_NOT_FOUND
         )
 

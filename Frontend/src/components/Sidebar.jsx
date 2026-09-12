@@ -15,19 +15,22 @@ class Sidebar extends Component {
                     Dashboard
                 </Link>
 
-                {/* Admin only */}
-                {(role === "Admin" || role === "admin") && (
+                {/* Director only */}
+                {(role === "Director") && (
                     <>
                         <Link to="/employees">
                             Employees
+                        </Link>
+                        <Link to="/projects">
+                            Projects
                         </Link>
 
                         
                     </>
                 )}
 
-                {/* Admin + Auditor */}
-                {(role === "Admin" || role === "Auditor") && (
+                {/* Auditor only */}
+                { (role === "Auditor") && (
                     <>
                         <Link to="/audits">
                             Audits
@@ -39,26 +42,21 @@ class Sidebar extends Component {
                     </>
                 )}
 
-                {/* Employee */}
-                {role === "Employee" && (
-                    <Link to="/my-audits">
-                        My Audits
-                    </Link>
-                )}
-                {role === "Software Engineer" && (
-                    <Link to="/projects">
-                        My Project
-                    </Link>
-                )}
-                {role === "Manager" && (
+                {/* QMS only */}
+                {role === "QMS" && (
                     <Link to="/team">
                         My Team
                     </Link>
-                )}
-                {role === "Developer" && (
-                    <Link to="/developer">
-                        My AI Project
-                    </Link>
+                )} 
+
+                {/* Teams only */}
+                { (role === "Auditor") && (
+                    <>
+                         
+                        <Link to="/reports">
+                            Reports
+                        </Link>
+                    </>
                 )}
 
             </div>

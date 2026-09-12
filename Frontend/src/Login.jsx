@@ -64,6 +64,39 @@ function Login() {
     }
   }
 
+  async function refreshAccessToken() {
+  try {
+    const refreshToken = localStorage.getItem('refreshToken')
+
+    const response = await axios.post(
+      'http://127.0.0.1:8000/api/token/refresh/',
+      {
+        refresh: refreshToken
+      }
+    )
+
+    const newAccessToken = response.data.access
+
+    localStorage.setItem(
+      'accessToken',
+      newAccessToken
+    )
+
+    return newAccessToken
+
+  } catch (error) {
+    console.log('Refresh token failed')
+
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+
+    window.location.href = '/'
+
+    return null
+  }
+}
+
   return (
     <div className="login-page">
 

@@ -384,15 +384,18 @@ body {
 
 /* Add Employee button */
 .add-employee-btn {
-    background-color: #19295b;
+    background-color: #1f3470;
     color: white;
     border: none;
-    padding: 12px 20px;
-    border-radius: 7px;
-    font-size: 15px;
+    padding: 12px 22px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
     cursor: pointer;
-}
 
+    margin-left: 1010px;
+    margin-bottom: 20px;
+}
 .add-employee-btn:hover {
     background-color: #263b7a;
 }
