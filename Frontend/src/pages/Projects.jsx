@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import Sidebar from "../components/Sidebar";
 import api from "../services/api";
+import withNavigation from "../withNavigation";
 
 class Projects extends Component {
 
@@ -8,38 +9,87 @@ class Projects extends Component {
         super(props);
 
         this.state = {
-            projects: [],
-            loading: true,
+            projects: [
+                {
+                    id: 1,
+                    name: "QMS Internal Audit System",
+                    description: "Internal audit and compliance management system",
+                    department: "Quality Assurance",
+                    manager: "Harjot Kaur",
+                    status: "Active"
+                },
+                {
+                    id: 2,
+                    name: "Employee Management System",
+                    description: "Manage employee records, departments and roles",
+                    department: "Human Resources",
+                    manager: "Priya Sharma",
+                    status: "Active"
+                },
+                {
+                    id: 3,
+                    name: "Customer Portal",
+                    description: "Customer-facing portal for managing services and requests",
+                    department: "Customer Support",
+                    manager: "Rahul Singh",
+                    status: "Active"
+                },
+                {
+                    id: 4,
+                    name: "Audit Reporting Dashboard",
+                    description: "Dashboard for audit reports, findings and compliance status",
+                    department: "Audit",
+                    manager: "Aman Verma",
+                    status: "Inactive"
+                },
+                {
+                    id: 5,
+                    name: "Document Management System",
+                    description: "Centralized system for storing and managing documents",
+                    department: "Operations",
+                    manager: "Neha Gupta",
+                    status: "Active"
+                },
+                {
+                    id: 6,
+                    name: "Risk Management Portal",
+                    description: "Identify, assess and monitor organizational risks",
+                    department: "Risk Management",
+                    manager: "Vikram Singh",
+                    status: "Active"
+                }
+            ],
+            loading: false,
             error: ""
         };
     }
 
     // Runs after the component is mounted
-    async componentDidMount() {
-        try {
+    // async componentDidMount() {
+    //     try {
 
-            const response = await api.get("/projects/");
+    //         const response = await api.get("/projects/");
 
-            console.log("Projects:", response.data);
+    //         console.log("Projects:", response.data);
 
-            this.setState({
-                projects: response.data,
-                loading: false
-            });
+    //         this.setState({
+    //             projects: response.data,
+    //             loading: false
+    //         });
 
-        } catch (error) {
+    //     } catch (error) {
 
-            console.log(
-                "Failed to fetch projects:",
-                error.response?.data
-            );
+    //         console.log(
+    //             "Failed to fetch projects:",
+    //             error.response?.data
+    //         );
 
-            this.setState({
-                error: "Failed to load projects",
-                loading: false
-            });
-        }
-    }
+    //         this.setState({
+    //             error: "Failed to load projects",
+    //             loading: false
+    //         });
+    //     }
+    // }
 
     render() {
 
@@ -66,7 +116,10 @@ class Projects extends Component {
                             </p>
                         </div>
 
-                        <button className="add-project-btn">
+                        <button
+                            className="add-project-btn"
+                            onClick={() => this.props.navigate("/projects/add")}
+                        >
                             + Add Project
                         </button>
 
@@ -218,4 +271,4 @@ class Projects extends Component {
     }
 }
 
-export default Projects;
+export default withNavigation(Projects);

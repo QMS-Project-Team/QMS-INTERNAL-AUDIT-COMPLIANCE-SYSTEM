@@ -9,6 +9,7 @@ import Login from "./Login";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Projects from "./pages/Projects";
+import AddProject from "./pages/AddProject";
 import ProtectedRoute from "./ProtectedRoute";
 
 function App() {
@@ -43,11 +44,13 @@ function App() {
                             <Projects />
                         </ProtectedRoute>}
                 />
-                {/* Unknown URL
+
                 <Route
-                    path="*"
-                    element={<Navigate to="/login" />}
-                /> */}
+                    path="/projects/add"
+                    element={<ProtectedRoute allowedRoles={["Director"]}>
+                            <AddProject />
+                        </ProtectedRoute>}
+                /> 
 
             </Routes>
 
