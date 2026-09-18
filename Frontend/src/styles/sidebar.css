@@ -1,0 +1,363 @@
+/* =========================================================
+   QMS SIDEBAR
+========================================================= */
+
+.sidebar {
+    position: fixed;
+
+    top: 0;
+    left: 0;
+
+    width: 260px;
+    height: 100vh;
+
+    padding: 30px 16px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #0b1220 0%,
+            #111827 45%,
+            #0b1220 100%
+        );
+
+    border-right:
+        1px solid
+        rgba(255, 255, 255, 0.08);
+
+    box-shadow:
+        8px 0 35px
+        rgba(0, 0, 0, 0.35);
+
+    z-index: 1000;
+
+    overflow-y: auto;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+
+/* =========================================================
+   TOP QMS
+========================================================= */
+
+.sidebar h2 {
+
+    margin: 0;
+
+    padding:
+        10px 12px 28px;
+
+    color: #ffffff;
+
+    font-size: 27px;
+
+    font-weight: 750;
+
+    letter-spacing: 0.5px;
+
+    border-bottom:
+        1px solid
+        rgba(255, 255, 255, 0.08);
+}
+
+
+/* =========================================================
+   SIDEBAR LINKS
+========================================================= */
+
+.sidebar a {
+
+    position: relative;
+
+    display: flex;
+
+    align-items: center;
+
+    width: 100%;
+
+    min-height: 48px;
+
+    margin-top: 7px;
+
+    padding:
+        0 15px;
+
+    border-radius: 10px;
+
+    color:
+        rgba(255, 255, 255, 0.65) !important;
+
+    background: transparent;
+
+    text-decoration: none !important;
+
+    font-size: 14px;
+
+    font-weight: 500;
+
+    transition:
+        all 0.2s ease;
+}
+
+
+/* =========================================================
+   HOVER
+========================================================= */
+
+.sidebar a:hover {
+
+    color: #ffffff !important;
+
+    background:
+        rgba(59, 130, 246, 0.12);
+
+    transform:
+        translateX(4px);
+
+    box-shadow:
+        inset 3px 0 0
+        rgba(96, 165, 250, 0.7);
+}
+
+
+/* =========================================================
+   ACTIVE LINK
+========================================================= */
+
+.sidebar a.active {
+
+    color: #ffffff !important;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(37, 99, 235, 0.40),
+            rgba(37, 99, 235, 0.12)
+        );
+
+    box-shadow:
+        inset 3px 0 0 #3b82f6,
+
+        0 5px 20px
+        rgba(37, 99, 235, 0.12);
+}
+
+
+/* =========================================================
+   ACTIVE LINK GLOW
+========================================================= */
+
+.sidebar a.active::after {
+
+    content: "";
+
+    position: absolute;
+
+    right: 12px;
+
+    width: 6px;
+
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: #60a5fa;
+
+    box-shadow:
+        0 0 8px
+        rgba(96, 165, 250, 0.9);
+}
+
+
+/* =========================================================
+   OPTIONAL ICON
+   Works if you already have icons inside links
+========================================================= */
+
+.sidebar a svg {
+
+    width: 19px;
+
+    height: 19px;
+
+    margin-right: 13px;
+
+    color:
+        rgba(255, 255, 255, 0.50);
+
+    flex-shrink: 0;
+}
+
+
+.sidebar a:hover svg,
+.sidebar a.active svg {
+
+    color: #60a5fa;
+}
+
+
+/* =========================================================
+   SIDEBAR BUTTON
+========================================================= */
+
+.sidebar button {
+
+    width: 100%;
+
+    min-height: 46px;
+
+    margin-top: 8px;
+
+    padding:
+        0 15px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: transparent;
+
+    color:
+        rgba(255, 255, 255, 0.60);
+
+    text-align: left;
+
+    font-family: inherit;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+    transition:
+        all 0.2s ease;
+}
+
+
+.sidebar button:hover {
+
+    color: #f87171;
+
+    background:
+        rgba(239, 68, 68, 0.10);
+}
+
+
+/* =========================================================
+   SIDEBAR FOOTER
+========================================================= */
+
+.sidebar-footer {
+
+    position: absolute;
+
+    left: 16px;
+
+    right: 16px;
+
+    bottom: 20px;
+
+    padding-top: 15px;
+
+    border-top:
+        1px solid
+        rgba(255, 255, 255, 0.08);
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+
+.main-content {
+
+    margin-left: 260px;
+
+    min-height: 100vh;
+
+    width:
+        calc(100% - 260px);
+
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+
+    .sidebar {
+
+        width: 220px;
+    }
+
+    .main-content {
+
+        margin-left: 220px;
+
+        width:
+            calc(100% - 220px);
+    }
+}
+
+
+@media (max-width: 650px) {
+
+    .sidebar {
+
+        width: 75px;
+
+        padding:
+            25px 10px;
+    }
+
+
+    .sidebar h2 {
+
+        text-align: center;
+
+        font-size: 20px;
+
+        padding:
+            10px 0 25px;
+    }
+
+
+    .sidebar a {
+
+        justify-content: center;
+
+        padding: 0;
+
+        font-size: 0;
+    }
+
+
+    .sidebar a svg {
+
+        margin: 0;
+    }
+
+
+    .sidebar a.active::after {
+
+        right: 5px;
+    }
+
+
+    .main-content {
+
+        margin-left: 75px;
+
+        width:
+            calc(100% - 75px);
+    }
+}

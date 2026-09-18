@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import Sidebar from "../components/Sidebar";
 import api from "../services/api";
 import withNavigation from "../withNavigation";
+import "../styles/projects.css";
 
 class Projects extends Component {
 

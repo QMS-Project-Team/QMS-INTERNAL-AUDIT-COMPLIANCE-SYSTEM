@@ -1,55 +1,33 @@
-import { useEffect, useRef } from "react";
-import "./ParticleBackground.css";
+import React, { useEffect, useRef } from "react";
 
-function ParticleBackground() {
-
+const ParticleBackground = () => {
     const canvasRef = useRef(null);
 
     useEffect(() => {
-
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
 
-        let animationFrame;
-
         let width = 0;
         let height = 0;
+        let animationFrame;
 
-        let centerX = 0;
-        let centerY = 0;
+        const mouse = {
+            x: -1000,
+            y: -1000,
+            targetX: -1000,
+            targetY: -1000,
+            active: false
+        };
 
         let particles = [];
 
-        let time = 0;
+        const isMobile = () => window.innerWidth < 768;
 
-
-        /* =========================================
-           SMOOTH MOUSE
-        ========================================= */
-
-        const mouse = {
-
-            x: 0,
-            y: 0,
-
-            targetX: 0,
-            targetY: 0,
-
-            active: false
-
-        };
-
-
-        /* =========================================
-           RESIZE
-        ========================================= */
-
-        function resize() {
-
-            const dpr = Math.min(
-                window.devicePixelRatio || 1,
-                2
-            );
+        // ------------------------------------
+        // Canvas resize
+        // ------------------------------------
+        const resizeCanvas = () => {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
             width = window.innerWidth;
             height = window.innerHeight;
@@ -60,630 +38,168 @@ function ParticleBackground() {
             canvas.style.width = `${width}px`;
             canvas.style.height = `${height}px`;
 
-            ctx.setTransform(
-                dpr,
-                0,
-                0,
-                dpr,
-                0,
-                0
-            );
-
-            centerX = width * 0.28;
-            centerY = height / 2;
-
-
-            if (!mouse.active) {
-
-                mouse.x = centerX;
-                mouse.y = centerY;
-
-                mouse.targetX = centerX;
-                mouse.targetY = centerY;
-
-            }
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
             createParticles();
-        }
+        };
 
-
-        /* =========================================
-           CREATE GALAXY PARTICLES
-        ========================================= */
-
-        function createParticles() {
-
+        // ------------------------------------
+        // Create QMS particle map
+        // ------------------------------------
+        const createParticles = () => {
             particles = [];
 
+            const tempCanvas = document.createElement("canvas");
+            const tempCtx = tempCanvas.getContext("2d");
+
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+
             /*
-             * 750 is smoother on normal laptops.
-             * You can increase to 1000 later.
+             * QMS position.
+             * Change 0.32 to move QMS left/right.
              */
+            const centerX = width * 0.32;
+            const centerY = height * 0.48;
 
-            const count =
-                width < 768
-                    ? 450
-                    : 750;
+            let fontSize;
 
-
-            const maxRadius =
-                Math.min(
-                    width,
-                    height
-                ) * 0.47;
-
-
-            for (let i = 0; i < count; i++) {
-
-                const arm =
-                    i % 3;
-
-
-                /*
-                 * More particles toward center
-                 */
-
-                const random =
-                    Math.pow(
-                        Math.random(),
-                        0.72
-                    );
-
-
-                const radius =
-                    random * maxRadius;
-
-
-                /*
-                 * Spiral shape
-                 */
-
-                const spiral =
-                    radius * 0.014;
-
-
-                const baseAngle =
-                    arm *
-                    (
-                        Math.PI * 2 / 3
-                    );
-
-
-                const angle =
-                    baseAngle +
-                    spiral +
-                    (
-                        Math.random() - 0.5
-                    ) *
-                    0.55;
-
-
-                /*
-                 * Width of spiral arm
-                 */
-
-                const spread =
-                    (
-                        Math.random() - 0.5
-                    ) *
-                    (
-                        10 +
-                        radius * 0.035
-                    );
-
-
-                particles.push({
-
-                    radius,
-
-                    angle,
-
-                    spread,
-
-                    arm,
-
-                    size:
-                        Math.random() <
-                        0.9
-                            ? Math.random() *
-                              1.3 +
-                              0.25
-                            : Math.random() *
-                              2.8 +
-                              1.2,
-
-                    alpha:
-                        Math.random() *
-                        0.65 +
-                        0.25,
-
-                    speed:
-                        Math.random() *
-                        0.0008 +
-                        0.00025,
-
-                    twinkle:
-                        Math.random() *
-                        Math.PI *
-                        2,
-
-                    warm:
-                        Math.random() <
-                        0.08
-
-                });
-
+            if (width < 500) {
+                fontSize = Math.min(width * 0.30, 170);
+            } else {
+                fontSize = Math.min(width * 0.23, 300);
             }
 
-        }
+            tempCtx.font = `900 ${fontSize}px Arial`;
+            tempCtx.textAlign = "center";
+            tempCtx.textBaseline = "middle";
 
+            // Draw QMS in temporary canvas
+            tempCtx.fillStyle = "#ffffff";
+            tempCtx.fillText("QMS", centerX, centerY);
 
-        /* =========================================
-           MOUSE MOVE
-        ========================================= */
-
-        function handleMouseMove(e) {
-
-            mouse.targetX = e.clientX;
-            mouse.targetY = e.clientY;
-
-            mouse.active = true;
-
-        }
-
-
-        /* =========================================
-           MOUSE LEAVE
-        ========================================= */
-
-        function handleMouseLeave() {
-
-            mouse.active = false;
-
-            mouse.targetX = centerX;
-            mouse.targetY = centerY;
-
-        }
-
-
-        /* =========================================
-           DRAW GLOWING PARTICLE
-        ========================================= */
-
-        function drawParticle(
-            x,
-            y,
-            size,
-            alpha,
-            warm
-        ) {
-
-            /*
-             * Large particles get glow.
-             */
-
-            if (size > 1.2) {
-
-                const glowSize =
-                    size * 7;
-
-
-                const gradient =
-                    ctx.createRadialGradient(
-                        x,
-                        y,
-                        0,
-                        x,
-                        y,
-                        glowSize
-                    );
-
-
-                if (warm) {
-
-                    gradient.addColorStop(
-                        0,
-                        `rgba(
-                            255,
-                            220,
-                            190,
-                            ${alpha}
-                        )`
-                    );
-
-                    gradient.addColorStop(
-                        0.3,
-                        `rgba(
-                            255,
-                            180,
-                            120,
-                            ${alpha * 0.35}
-                        )`
-                    );
-
-                } else {
-
-                    gradient.addColorStop(
-                        0,
-                        `rgba(
-                            230,
-                            245,
-                            255,
-                            ${alpha}
-                        )`
-                    );
-
-                    gradient.addColorStop(
-                        0.3,
-                        `rgba(
-                            100,
-                            180,
-                            255,
-                            ${alpha * 0.4}
-                        )`
-                    );
-
-                }
-
-
-                gradient.addColorStop(
-                    1,
-                    "rgba(0,0,0,0)"
-                );
-
-
-                ctx.fillStyle = gradient;
-
-                ctx.beginPath();
-
-                ctx.arc(
-                    x,
-                    y,
-                    glowSize,
-                    0,
-                    Math.PI * 2
-                );
-
-                ctx.fill();
-
-            }
-
-
-            /*
-             * Bright particle center
-             */
-
-            ctx.beginPath();
-
-            ctx.fillStyle = warm
-                ? `rgba(
-                    255,
-                    225,
-                    200,
-                    ${alpha}
-                )`
-                : `rgba(
-                    220,
-                    240,
-                    255,
-                    ${alpha}
-                )`;
-
-            ctx.arc(
-                x,
-                y,
-                size,
-                0,
-                Math.PI * 2
-            );
-
-            ctx.fill();
-
-        }
-
-
-        /* =========================================
-           ANIMATION
-        ========================================= */
-
-        function animate() {
-
-            time += 0.01;
-
-
-            /*
-             * VERY SMOOTH MOUSE FOLLOW
-             *
-             * Smaller number = smoother
-             */
-
-            mouse.x +=
-                (
-                    mouse.targetX -
-                    mouse.x
-                ) * 0.045;
-
-
-            mouse.y +=
-                (
-                    mouse.targetY -
-                    mouse.y
-                ) * 0.045;
-
-
-            /*
-             * Clear screen
-             */
-
-            ctx.fillStyle =
-                "rgba(1, 5, 9, 0.30)";
-
-            ctx.fillRect(
+            const imageData = tempCtx.getImageData(
                 0,
                 0,
                 width,
                 height
             );
 
-
             /*
-             * Mouse distance from center
+             * Particle spacing.
+             *
+             * Smaller value = more particles
+             * Larger value = fewer particles
              */
+            const gap = isMobile() ? 5 : 4;
 
-            const mouseDX =
-                mouse.x - centerX;
+            for (let y = 0; y < height; y += gap) {
+                for (let x = 0; x < width; x += gap) {
 
-            const mouseDY =
-                mouse.y - centerY;
+                    const index = (y * width + x) * 4;
 
+                    const alpha = imageData.data[index + 3];
 
-            const mouseDistance =
-                Math.sqrt(
-                    mouseDX * mouseDX +
-                    mouseDY * mouseDY
-                );
+                    if (alpha > 120) {
 
+                        const spread = 10;
 
-            /*
-             * Mouse angle
-             */
+                        particles.push({
+                            x: x + (Math.random() - 0.5) * spread,
+                            y: y + (Math.random() - 0.5) * spread,
 
-            const mouseAngle =
-                Math.atan2(
-                    mouseDY,
-                    mouseDX
-                );
+                            targetX: x,
+                            targetY: y,
 
+                            vx: 0,
+                            vy: 0,
 
-            /*
-             * Draw particles
-             */
+                            size: Math.random() * 1.7 + 0.7,
 
-            for (
-                let i = 0;
-                i < particles.length;
-                i++
-            ) {
+                            baseOpacity:
+                                Math.random() * 0.55 + 0.45,
 
-                const particle =
-                    particles[i];
+                            phase:
+                                Math.random() * Math.PI * 2,
 
+                            speed:
+                                Math.random() * 0.02 + 0.01,
 
-                /*
-                 * Slow galaxy rotation
-                 */
-
-                particle.angle +=
-                    particle.speed;
-
-
-                /*
-                 * Base spiral angle
-                 */
-
-                let angle =
-                    particle.angle;
-
-
-                /*
-                 * Smooth mouse influence
-                 */
-
-                const centerInfluence =
-                    Math.max(
-                        0,
-                        1 -
-                        mouseDistance /
-                        (
-                            Math.min(
-                                width,
-                                height
-                            ) *
-                            0.75
-                        )
-                    );
-
-
-                /*
-                 * Galaxy bends slightly
-                 * toward cursor.
-                 */
-
-                const angleDifference =
-                    Math.atan2(
-                        Math.sin(
-                            mouseAngle -
-                            angle
-                        ),
-                        Math.cos(
-                            mouseAngle -
-                            angle
-                        )
-                    );
-
-
-                angle +=
-                    angleDifference *
-                    centerInfluence *
-                    0.08;
-
-
-                /*
-                 * Mouse creates subtle
-                 * breathing effect.
-                 */
-
-                const breathing =
-                    1 +
-                    centerInfluence *
-                    0.08;
-
-
-                const radius =
-                    particle.radius *
-                    breathing;
-
-
-                /*
-                 * Spiral position
-                 */
-
-                let x =
-                    centerX +
-                    Math.cos(angle) *
-                    radius;
-
-
-                let y =
-                    centerY +
-                    Math.sin(angle) *
-                    radius *
-                    0.72;
-
-
-                /*
-                 * Organic movement along arm
-                 */
-
-                const wave =
-                    Math.sin(
-                        time +
-                        particle.twinkle
-                    );
-
-
-                x +=
-                    particle.spread *
-                    wave;
-
-
-                y +=
-                    particle.spread *
-                    Math.cos(
-                        time * 0.8 +
-                        particle.twinkle
-                    );
-
-
-                /*
-                 * Cursor attraction
-                 *
-                 * Only particles close
-                 * to cursor are affected.
-                 */
-
-                const dx =
-                    mouse.x - x;
-
-                const dy =
-                    mouse.y - y;
-
-
-                const distance =
-                    Math.sqrt(
-                        dx * dx +
-                        dy * dy
-                    );
-
-
-                if (distance < 280) {
-
-                    const force =
-                        Math.pow(
-                            1 -
-                            distance / 280,
-                            2
-                        ) *
-                        0.22;
-
-
-                    x += dx * force;
-
-                    y += dy * force;
-
+                            // Some particles become brighter
+                            glow:
+                                Math.random() > 0.82
+                        });
+                    }
                 }
-
-
-                /*
-                 * Gentle particle twinkle
-                 */
-
-                const twinkle =
-                    1 +
-                    Math.sin(
-                        time * 2 +
-                        particle.twinkle
-                    ) *
-                    0.22;
-
-
-                /*
-                 * Draw
-                 */
-
-                drawParticle(
-
-                    x,
-
-                    y,
-
-                    particle.size *
-                    twinkle,
-
-                    particle.alpha,
-
-                    particle.warm
-
-                );
-
             }
 
+            /*
+             * Add a few floating particles
+             * around QMS for atmosphere.
+             */
+            const extraParticles = isMobile() ? 80 : 160;
 
-            animationFrame =
-                requestAnimationFrame(
-                    animate
-                );
+            for (let i = 0; i < extraParticles; i++) {
 
-        }
+                const angle = Math.random() * Math.PI * 2;
+                const radius =
+                    Math.random() * Math.min(width * 0.35, 400);
 
+                particles.push({
+                    x:
+                        centerX +
+                        Math.cos(angle) * radius,
 
-        /* =========================================
-           START
-        ========================================= */
+                    y:
+                        centerY +
+                        Math.sin(angle) *
+                            radius *
+                            0.65,
 
-        resize();
+                    targetX:
+                        centerX +
+                        Math.cos(angle) * radius,
 
-        animate();
+                    targetY:
+                        centerY +
+                        Math.sin(angle) *
+                            radius *
+                            0.65,
 
+                    vx: 0,
+                    vy: 0,
 
-        /* =========================================
-           EVENTS
-        ========================================= */
+                    size:
+                        Math.random() * 1.2 + 0.3,
 
-        window.addEventListener(
-            "resize",
-            resize
-        );
+                    baseOpacity:
+                        Math.random() * 0.35 + 0.1,
+
+                    phase:
+                        Math.random() * Math.PI * 2,
+
+                    speed:
+                        Math.random() * 0.02 + 0.005,
+
+                    glow:
+                        Math.random() > 0.9
+                });
+            }
+        };
+
+        // ------------------------------------
+        // Mouse movement
+        // ------------------------------------
+        const handleMouseMove = (event) => {
+
+            mouse.targetX = event.clientX;
+            mouse.targetY = event.clientY;
+            mouse.active = true;
+        };
+
+        const handleMouseLeave = () => {
+            mouse.active = false;
+        };
 
         window.addEventListener(
             "mousemove",
@@ -695,20 +211,187 @@ function ParticleBackground() {
             handleMouseLeave
         );
 
+        // ------------------------------------
+        // Animation
+        // ------------------------------------
+        const animate = () => {
 
-        /* =========================================
-           CLEANUP
-        ========================================= */
+            ctx.clearRect(0, 0, width, height);
+
+            /*
+             * Smooth mouse movement
+             */
+            mouse.x +=
+                (mouse.targetX - mouse.x) * 0.08;
+
+            mouse.y +=
+                (mouse.targetY - mouse.y) * 0.08;
+
+            particles.forEach((particle) => {
+
+                // --------------------------------
+                // Return to QMS target position
+                // --------------------------------
+                const dx =
+                    particle.targetX - particle.x;
+
+                const dy =
+                    particle.targetY - particle.y;
+
+                particle.vx += dx * 0.018;
+                particle.vy += dy * 0.018;
+
+                /*
+                 * Friction
+                 */
+                particle.vx *= 0.88;
+                particle.vy *= 0.88;
+
+                // --------------------------------
+                // Mouse interaction
+                // --------------------------------
+                if (mouse.active) {
+
+                    const mouseDx =
+                        particle.x - mouse.x;
+
+                    const mouseDy =
+                        particle.y - mouse.y;
+
+                    const distance = Math.sqrt(
+                        mouseDx * mouseDx +
+                        mouseDy * mouseDy
+                    );
+
+                    const interactionRadius = 170;
+
+                    if (
+                        distance <
+                        interactionRadius
+                    ) {
+
+                        const force =
+                            (1 -
+                                distance /
+                                    interactionRadius) *
+                            1.8;
+
+                        const angle =
+                            Math.atan2(
+                                mouseDy,
+                                mouseDx
+                            );
+
+                        /*
+                         * Push particles away
+                         * from cursor
+                         */
+                        particle.vx +=
+                            Math.cos(angle) *
+                            force;
+
+                        particle.vy +=
+                            Math.sin(angle) *
+                            force;
+                    }
+                }
+
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+
+                // --------------------------------
+                // Twinkle
+                // --------------------------------
+                particle.phase +=
+                    particle.speed;
+
+                const twinkle =
+                    Math.sin(particle.phase) *
+                        0.25 +
+                    0.75;
+
+                const opacity =
+                    particle.baseOpacity *
+                    twinkle;
+
+                // --------------------------------
+                // Draw particle
+                // --------------------------------
+                ctx.beginPath();
+
+                ctx.arc(
+                    particle.x,
+                    particle.y,
+                    particle.size,
+                    0,
+                    Math.PI * 2
+                );
+
+                ctx.fillStyle = `rgba(
+                    180,
+                    220,
+                    255,
+                    ${opacity}
+                )`;
+
+                ctx.fill();
+
+                // --------------------------------
+                // Glow particles
+                // --------------------------------
+                if (particle.glow) {
+
+                    ctx.beginPath();
+
+                    ctx.arc(
+                        particle.x,
+                        particle.y,
+                        particle.size * 4,
+                        0,
+                        Math.PI * 2
+                    );
+
+                    const gradient =
+                        ctx.createRadialGradient(
+                            particle.x,
+                            particle.y,
+                            0,
+                            particle.x,
+                            particle.y,
+                            particle.size * 4
+                        );
+
+                    gradient.addColorStop(
+                        0,
+                        "rgba(80,180,255,0.45)"
+                    );
+
+                    gradient.addColorStop(
+                        1,
+                        "rgba(80,180,255,0)"
+                    );
+
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+                }
+            });
+
+            animationFrame =
+                requestAnimationFrame(animate);
+        };
+
+        resizeCanvas();
+        animate();
+
+        window.addEventListener(
+            "resize",
+            resizeCanvas
+        );
 
         return () => {
 
             cancelAnimationFrame(
                 animationFrame
-            );
-
-            window.removeEventListener(
-                "resize",
-                resize
             );
 
             window.removeEventListener(
@@ -721,10 +404,12 @@ function ParticleBackground() {
                 handleMouseLeave
             );
 
+            window.removeEventListener(
+                "resize",
+                resizeCanvas
+            );
         };
-
     }, []);
-
 
     return (
         <canvas
@@ -732,7 +417,6 @@ function ParticleBackground() {
             className="particle-canvas"
         />
     );
-}
-
+};
 
 export default ParticleBackground;

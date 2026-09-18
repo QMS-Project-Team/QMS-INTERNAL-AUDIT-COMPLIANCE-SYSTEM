@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import Sidebar from "../components/Sidebar";
- 
+import "../styles/add-project.css";
 
 class AddProject extends Component {
 
