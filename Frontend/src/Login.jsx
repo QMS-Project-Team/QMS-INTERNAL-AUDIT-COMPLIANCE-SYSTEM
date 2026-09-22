@@ -3,7 +3,8 @@ import axios from 'axios'
 import './App.css'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
-
+import ParticleBackground from './ParticleBackground'
+import "./styles/login.css";
 
 function Login() {
   const [username, setUsername] = useState('')
@@ -99,6 +100,8 @@ function Login() {
 
   return (
     <div className="login-page">
+
+        <ParticleBackground />
 
       <div className="login-card">
 
