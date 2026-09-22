@@ -1,8 +1,16 @@
+<<<<<<< HEAD
+"""TEAM is an integration layer for external master data.
+
+Department, Project, and Employee master-data models intentionally do not live
+in QMS. The external Master API is the source of truth. Audit-time snapshots,
+when needed, belong to the audit domain rather than TEAM.
+"""
+=======
 from django.db import models
 
 
 class Department(models.Model):
-    external_id = models.CharField(max_length=20, unique=True)
+    department_code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
 
     def __str__(self):
@@ -10,10 +18,9 @@ class Department(models.Model):
 
 
 class Project(models.Model):
-    external_id = models.CharField(max_length=20, unique=True)
+    project_code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-
     department = models.ForeignKey(
         Department,
         on_delete=models.CASCADE,
@@ -25,10 +32,9 @@ class Project(models.Model):
 
 
 class Employee(models.Model):
-    external_id = models.CharField(max_length=20, unique=True)
-
+    employee_code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
-    email = models.EmailField()
+    email = models.EmailField(unique=True)
     contact = models.CharField(max_length=15)
     role = models.CharField(max_length=100)
 
@@ -46,3 +52,4 @@ class Employee(models.Model):
 
     def __str__(self):
         return self.name
+>>>>>>> development

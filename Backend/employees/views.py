@@ -14,7 +14,7 @@ from .serializers import EmployeeSerializer
 # GET /api/employees/
 # POST /api/employees/
 @api_view(['GET', 'POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def employee_list(request):
 
     employees = Employee.objects.all()
@@ -93,6 +93,12 @@ def employee_detail(request, id):
             status=status.HTTP_200_OK
         )
 
+    if request.method in ('PUT', 'PATCH', 'DELETE') and not (request.user.is_staff or request.user.is_superuser):
+        return Response(
+            {"message": "Only an administrator can modify employee records."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     if request.method == 'PUT':
 
         serializer = EmployeeSerializer(
@@ -147,7 +153,13 @@ def employee_detail(request, id):
 @permission_classes([IsAuthenticated])
 def me(request):
 
-    employee = request.user.employee
+    try:
+        employee = request.user.employee
+    except Employee.DoesNotExist:
+        return Response(
+            {"message": "Employee profile not found for this account."},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     return Response(
         {
@@ -165,8 +177,11 @@ def me(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def register(request):
+
+    if not (request.user.is_staff or request.user.is_superuser):
+        return Response({"message": "Only an administrator can register employees."}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = RegisterSerializer(data=request.data)
 
