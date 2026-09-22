@@ -25,6 +25,9 @@ class Sidebar extends Component {
                         <Link to="/projects">
                             Projects
                         </Link>
+                        <Link to="/checklists">
+                            <span>Checklists</span>
+                        </Link>
 
                         
                     </>

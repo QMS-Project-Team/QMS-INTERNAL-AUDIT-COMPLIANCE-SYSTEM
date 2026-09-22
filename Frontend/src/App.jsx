@@ -11,6 +11,10 @@ import Employees from "./pages/Employees";
 import Projects from "./pages/Projects";
 import AddProject from "./pages/AddProject";
 import ProtectedRoute from "./ProtectedRoute";
+import ChecklistManagement from "./pages/ChecklistManagement";
+import AddChecklist from "./pages/AddChecklist";
+import ChecklistItems from "./pages/ChecklistItems";
+import AddAudit from "./pages/AddAudit";
 
 function App() {
 
@@ -51,6 +55,42 @@ function App() {
                             <AddProject />
                         </ProtectedRoute>}
                 /> 
+
+                <Route
+                    path="/checklists"
+                    element={
+                        <ProtectedRoute allowedRoles={["Director"]}>
+                            <ChecklistManagement />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/checklists/add"
+                    element={
+                        <ProtectedRoute allowedRoles={["Director"]}>
+                            <AddChecklist />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/checklists/:id/items"
+                    element={
+                        <ProtectedRoute allowedRoles={["Director"]}>
+                            <ChecklistItems />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/audits/add"
+                    element={
+                        <ProtectedRoute allowedRoles={["Director"]}>
+                            <AddAudit />
+                        </ProtectedRoute>
+                    }
+                />
 
             </Routes>
 

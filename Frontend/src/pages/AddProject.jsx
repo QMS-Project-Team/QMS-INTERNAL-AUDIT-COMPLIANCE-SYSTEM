@@ -10,10 +10,11 @@ class AddProject extends Component {
         this.state = {
             name: "",
             description: "",
-            department: "",
-            manager: "",
+            department: "", 
             status: "Active",
-            error: ""
+            error: "",
+            poc:"",
+            framework:""
         };
     }
 
@@ -32,11 +33,12 @@ class AddProject extends Component {
             name,
             description,
             department,
-            manager,
-            status
+            status,
+            poc,
+            framework
         } = this.state;
 
-        if (!name || !description || !department || !manager) {
+        if (!name || !description || !department || !poc || !framework) {
             this.setState({
                 error: "Please fill all required fields."
             });
@@ -47,9 +49,10 @@ class AddProject extends Component {
         const projectData = {
             name,
             description,
-            department,
-            manager,
-            status
+            department, 
+            status,
+            framework,
+            
         };
 
         console.log("Project Data:", projectData);
@@ -59,11 +62,11 @@ class AddProject extends Component {
 
         alert("Project added successfully!");
 
-        this.props.history.push("/projects");
+        this.props.navigate("/projects")
     };
 
     handleCancel = () => {
-        this.props.history.push("/projects");
+        this.props.navigate("/projects")
     };
 
     render() {
@@ -71,10 +74,11 @@ class AddProject extends Component {
         const {
             name,
             description,
-            department,
-            manager,
+            department, 
             status,
-            error
+            error,
+            poc,
+            framework
         } = this.state;
 
         return (
@@ -215,22 +219,56 @@ class AddProject extends Component {
                                 <div className="form-group">
 
                                     <label>
-                                        Project Manager
+                                        Point of Contact
                                         <span>*</span>
                                     </label>
 
-                                    <input
-                                        type="text"
-                                        name="manager"
-                                        value={manager}
+                                    <select
+                                        name="poc"
+                                        value={poc}
                                         onChange={this.handleChange}
-                                        placeholder="Enter manager name"
-                                    />
+                                    >
+
+                                        <option value="">
+                                            Select POC
+                                        </option>
+
+                                        <option value="Quality Assurance">
+                                            Harjot kaur
+                                        </option>
+ 
+
+                                    </select>
 
                                 </div>
 
                             </div>
+                            <div className="form-row">
+                            <div className="form-group">
 
+                                    <label>
+                                        Compliance Framework
+                                        <span>*</span>
+                                    </label>
+
+                                    <select
+                                        name="framework"
+                                        value={framework}
+                                        onChange={this.handleChange}
+                                    >
+
+                                        <option value="">
+                                            Select framework
+                                        </option>
+
+                                        <option value="Quality Assurance">
+                                            ISO 9001 
+                                        </option>
+ 
+
+                                    </select>
+
+                                </div>
 
                             {/* Status */}
 
@@ -257,6 +295,7 @@ class AddProject extends Component {
                                 </select>
 
                             </div>
+                            </div>
 
 
                             {/* Buttons */}
@@ -275,7 +314,7 @@ class AddProject extends Component {
                                     type="submit"
                                     className="save-project-btn"
                                 >
-                                    + Create Project
+                                    Create Project
                                 </button>
 
                             </div>

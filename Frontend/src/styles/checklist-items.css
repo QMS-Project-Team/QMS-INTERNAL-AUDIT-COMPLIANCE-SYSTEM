@@ -1,0 +1,358 @@
+/* =================================
+   Checklist Items Page
+================================= */
+
+.checklist-items-container {
+    padding: 24px;
+    min-height: 100vh;
+    background: #f5f7fb;
+    box-sizing: border-box;
+}
+
+/* =================================
+   Header
+================================= */
+
+.checklist-items-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.checklist-items-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.checklist-items-header p {
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* =================================
+   Main Card
+================================= */
+
+.checklist-items-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* =================================
+   Checklist Information
+================================= */
+
+.checklist-info {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.info-box {
+    padding: 15px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.info-box label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.info-box span {
+    font-size: 14px;
+    color: #111827;
+    font-weight: 600;
+}
+
+/* =================================
+   Section Header
+================================= */
+
+.items-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.items-section-header h2 {
+    margin: 0;
+    font-size: 19px;
+    color: #111827;
+}
+
+/* =================================
+   Add Item Button
+================================= */
+
+.add-checklist-item-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 7px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.add-checklist-item-btn:hover {
+    background: #1d4ed8;
+}
+
+/* =================================
+   Items Table
+================================= */
+
+.checklist-items-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.checklist-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+.checklist-items-table th {
+    padding: 13px 14px;
+    background: #f3f4f6;
+    border-bottom: 1px solid #d1d5db;
+    text-align: left;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.checklist-items-table td {
+    padding: 13px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #4b5563;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+.checklist-items-table tr:hover {
+    background: #f9fafb;
+}
+
+/* =================================
+   Item Number
+================================= */
+
+.item-number {
+    width: 60px;
+    text-align: center;
+    font-weight: 700;
+    color: #374151;
+}
+
+/* =================================
+   Question
+================================= */
+
+.item-question {
+    min-width: 300px;
+    color: #111827;
+    font-weight: 500;
+}
+
+/* =================================
+   Response Type
+================================= */
+
+.response-type {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 5px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* =================================
+   Mandatory Badge
+================================= */
+
+.mandatory-yes {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 5px;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.mandatory-no {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 5px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* =================================
+   Action Buttons
+================================= */
+
+.item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-item-btn,
+.delete-item-btn {
+    padding: 7px 11px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.edit-item-btn {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.edit-item-btn:hover {
+    background: #dbeafe;
+}
+
+.delete-item-btn {
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.delete-item-btn:hover {
+    background: #fee2e2;
+}
+
+/* =================================
+   Empty State
+================================= */
+
+.empty-items {
+    padding: 45px 20px;
+    text-align: center;
+    border: 1px dashed #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+
+.empty-items h3 {
+    margin: 0 0 8px;
+    color: #374151;
+}
+
+.empty-items p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* =================================
+   Footer Actions
+================================= */
+
+.checklist-items-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.save-checklist-btn,
+.cancel-checklist-btn {
+    padding: 11px 22px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.save-checklist-btn {
+    border: none;
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.save-checklist-btn:hover {
+    background: #1d4ed8;
+}
+
+.cancel-checklist-btn {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #374151;
+}
+
+.cancel-checklist-btn:hover {
+    background: #f3f4f6;
+}
+
+/* =================================
+   Responsive
+================================= */
+
+@media (max-width: 1000px) {
+    .checklist-info {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .checklist-items-container {
+        padding: 15px;
+    }
+
+    .checklist-items-card {
+        padding: 16px;
+    }
+
+    .checklist-items-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .items-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .checklist-info {
+        grid-template-columns: 1fr;
+    }
+
+    .checklist-items-footer {
+        flex-direction: column;
+    }
+
+    .save-checklist-btn,
+    .cancel-checklist-btn {
+        width: 100%;
+    }
+}

@@ -1,0 +1,54 @@
+.add-audit-container {
+    padding: 24px;
+}
+
+.add-audit-container h1 {
+    margin-bottom: 24px;
+}
+
+.add-audit-form {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 10px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn-primary {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-secondary {
+    padding: 10px 20px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    cursor: pointer;
+}
