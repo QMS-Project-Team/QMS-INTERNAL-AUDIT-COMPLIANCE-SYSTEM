@@ -1,133 +1,374 @@
-from django.utils import timezone
 from rest_framework import serializers
 
-from .models import (
-    Audit, AuditAssignment, AuditSchedule, ChecklistResponse, Evidence,
-    Finding, CorrectiveAction, Verification, AuditReport,
-)
-from checklists.models import ChecklistItem
+from accounts.models import User
+
+from .models import (Audit,AuditorNomination,AuditorAssignment,
+                     AuditorOrientation,AuditSchedule,AuditConfirmation,
+                     AuditChecklist,AuditChecklistItem)
 
 
-class AuditAssignmentSerializer(serializers.ModelSerializer):
+class AuditSerializer(serializers.ModelSerializer):
+
+    project_name = serializers.CharField(
+        source="project.name",
+        read_only=True
+    )
+
+    framework_name = serializers.CharField(
+        source="framework.name",
+        read_only=True
+    )
+
+    created_by_name = serializers.CharField(
+        source="created_by.username",
+        read_only=True
+    )
+
     class Meta:
-        model = AuditAssignment
-        fields = ['id', 'employee_code', 'employee_name', 'assignment_type', 'assigned_at']
-        read_only_fields = ['id', 'employee_name', 'assigned_at']
+        model = Audit
+
+        fields = [
+            "id",
+            "audit_code",
+            "project",
+            "project_name",
+            "department",
+            "framework",
+            "framework_name",
+            "created_by",
+            "created_by_name",
+            "planned_start_date",
+            "planned_end_date",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "created_by",
+            "created_by_name",
+            "project_name",
+            "framework_name",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class AuditorNominationSerializer(
+    serializers.ModelSerializer
+):
+
+    auditor_name = serializers.CharField(
+        source="auditor.username",
+        read_only=True
+    )
+
+    nominated_by_name = serializers.CharField(
+        source="nominated_by.username",
+        read_only=True
+    )
+
+    class Meta:
+        model = AuditorNomination
+
+        fields = [
+            "id",
+            "audit",
+            "auditor",
+            "auditor_name",
+            "nominated_by",
+            "nominated_by_name",
+            "nominated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "audit",
+            "nominated_by",
+            "nominated_by_name",
+            "nominated_at",
+        ]
+
+    def validate_auditor(self, value):
+
+        if value.role != User.Role.AUDITOR:
+            raise serializers.ValidationError(
+                "Selected user must be an auditor."
+            )
+
+        return value
+
+    def validate(self, attrs):
+
+        auditor = attrs["auditor"]
+
+        audit = self.context["audit"]
+
+        if auditor.department == audit.department:
+            raise serializers.ValidationError(
+                "An auditor cannot audit their own department."
+            )
+
+        return attrs
+
+
+
+class AuditorAssignmentSerializer(serializers.ModelSerializer):
+    auditor_name = serializers.CharField(
+        source="auditor.username",
+        read_only=True
+    )
+
+    assigned_by_name = serializers.CharField(
+        source="assigned_by.username",
+        read_only=True
+    )
+
+    class Meta:
+        model = AuditorAssignment
+
+        fields = [
+            "id",
+            "audit",
+            "auditor",
+            "auditor_name",
+            "assignment_type",
+            "assigned_by",
+            "assigned_by_name",
+            "assigned_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "audit",
+            "assigned_by",
+            "assigned_by_name",
+            "assigned_at",
+        ]
+
+    def validate_auditor(self, value):
+        if value.role != User.Role.AUDITOR:
+            raise serializers.ValidationError(
+                "Selected user must be an auditor."
+            )
+
+        return value
+
+    def validate(self, attrs):
+        auditor = attrs["auditor"]
+        audit = self.context["audit"]
+
+        # Auditor cannot audit their own department
+        if auditor.department == audit.department:
+            raise serializers.ValidationError(
+                "An auditor cannot audit their own department."
+            )
+
+        # Auditor must have been nominated for this audit
+        is_nominated = AuditorNomination.objects.filter(
+            audit=audit,
+            auditor=auditor
+        ).exists()
+
+        if not is_nominated:
+            raise serializers.ValidationError(
+                "Auditor must be nominated for this audit before assignment."
+            )
+
+        return attrs
+
+
+class AuditorOrientationSerializer(serializers.ModelSerializer):
+
+    auditor_name = serializers.CharField(
+        source="assignment.auditor.username",
+        read_only=True
+    )
+
+    audit_code = serializers.CharField(
+        source="assignment.audit.audit_code",
+        read_only=True
+    )
+
+    class Meta:
+        model = AuditorOrientation
+
+        fields = [
+            "id",
+            "assignment",
+            "auditor_name",
+            "audit_code",
+            "status",
+            "completed_at",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "auditor_name",
+            "audit_code",
+            "completed_at",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class AuditScheduleSerializer(serializers.ModelSerializer):
+    audit_code = serializers.CharField(
+        source="audit.audit_code",
+        read_only=True
+    )
+
+    scheduled_by_name = serializers.CharField(
+        source="scheduled_by.username",
+        read_only=True
+    )
+
     class Meta:
         model = AuditSchedule
-        fields = ['id', 'start_at', 'end_at', 'confirmed_by_username', 'confirmed_at',
-                  'department_confirmed', 'department_confirmed_at', 'uploaded_to_bebonet', 'uploaded_at']
-        read_only_fields = ['id', 'confirmed_by_username', 'confirmed_at', 'department_confirmed_at', 'uploaded_at']
+        fields = [
+            "id",
+            "audit",
+            "audit_code",
+            "scheduled_start",
+            "scheduled_end",
+            "status",
+            "scheduled_by",
+            "scheduled_by_name",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "audit_code",
+            "status",
+            "scheduled_by",
+            "scheduled_by_name",
+            "created_at",
+            "updated_at",
+        ]
 
     def validate(self, attrs):
-        if attrs['end_at'] <= attrs['start_at']:
-            raise serializers.ValidationError({'end_at': 'End time must be after start time.'})
+        if attrs["scheduled_end"] <= attrs["scheduled_start"]:
+            raise serializers.ValidationError(
+                "Scheduled end must be after scheduled start."
+            )
+
         return attrs
 
 
-class ChecklistResponseSerializer(serializers.ModelSerializer):
+class AuditConfirmationSerializer(serializers.ModelSerializer):
+    audit_code = serializers.CharField(
+        source="schedule.audit.audit_code",
+        read_only=True
+    )
+
+    confirmed_by_name = serializers.CharField(
+        source="confirmed_by.username",
+        read_only=True
+    )
+
     class Meta:
-        model = ChecklistResponse
-        fields = ['id', 'item', 'result', 'response_value', 'auditor_comment',
-                  'responded_by_employee_code', 'responded_at']
-        read_only_fields = ['id', 'responded_by_employee_code', 'responded_at']
+        model = AuditConfirmation
+        fields = [
+            "id",
+            "schedule",
+            "audit_code",
+            "confirmation_type",
+            "confirmed_at",
+            "confirmed_by",
+            "confirmed_by_name",
+            "created_at",
+        ]
 
-    def validate_item(self, value):
-        audit = self.context.get('audit')
-        if audit and value.checklist_id != audit.checklist_id:
-            raise serializers.ValidationError('Checklist item does not belong to this audit checklist.')
-        return value
+        read_only_fields = [
+            "id",
+            "audit_code",
+            "confirmed_at",
+            "confirmed_by",
+            "confirmed_by_name",
+            "created_at",
+        ]
 
 
-class EvidenceSerializer(serializers.ModelSerializer):
+class AuditChecklistItemSerializer(serializers.ModelSerializer):
+    item_code = serializers.CharField(
+        source="checklist_item.item_code",
+        read_only=True
+    )
+    question = serializers.CharField(
+        source="checklist_item.question",
+        read_only=True
+    )
+    order = serializers.IntegerField(
+        source="checklist_item.order",
+        read_only=True
+    )
+
     class Meta:
-        model = Evidence
-        fields = ['id', 'response', 'file', 'original_name', 'description',
-                  'uploaded_by_employee_code', 'uploaded_at']
-        read_only_fields = ['id', 'original_name', 'uploaded_by_employee_code', 'uploaded_at']
+        model = AuditChecklistItem
+        fields = [
+            "id",
+            "item_code",
+            "question",
+            "order",
+            "result",
+            "remarks",
+        ]
+        read_only_fields = [
+            "id",
+            "item_code",
+            "question",
+            "order",
+        ]
 
 
-class CorrectiveActionSerializer(serializers.ModelSerializer):
+class AuditChecklistSerializer(serializers.ModelSerializer):
+    audit_code = serializers.CharField(
+        source="audit.audit_code",
+        read_only=True
+    )
+    checklist_name = serializers.CharField(
+        source="checklist.name",
+        read_only=True
+    )
+    framework_name = serializers.CharField(
+        source="checklist.framework.name",
+        read_only=True
+    )
+    department = serializers.CharField(
+        source="audit.department",
+        read_only=True
+    )
+    items = AuditChecklistItemSerializer(
+        many=True,
+        read_only=True
+    )
+
     class Meta:
-        model = CorrectiveAction
-        fields = ['id', 'action_type', 'description', 'owner_employee_code', 'due_date',
-                  'status', 'submitted_at', 'closed_at']
-        read_only_fields = ['id', 'status', 'submitted_at', 'closed_at']
-
-
-class FindingSerializer(serializers.ModelSerializer):
-    actions = CorrectiveActionSerializer(many=True, read_only=True)
-    class Meta:
-        model = Finding
-        fields = ['id', 'response', 'finding_type', 'title', 'description', 'severity',
-                  'raised_by_employee_code', 'raised_at', 'is_closed', 'actions']
-        read_only_fields = ['id', 'raised_by_employee_code', 'raised_at', 'is_closed', 'actions']
-
-    def validate(self, attrs):
-        if attrs.get('finding_type') == Finding.FindingType.NON_CONFORMITY and not attrs.get('severity'):
-            raise serializers.ValidationError({'severity': 'Severity is required for a non-conformity.'})
-        if attrs.get('finding_type') == Finding.FindingType.SUGGESTION:
-            attrs['severity'] = ''
-        return attrs
-
-
-class VerificationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Verification
-        fields = ['id', 'action', 'decision', 'comments', 'verified_by_employee_code', 'verified_at']
-        read_only_fields = ['id', 'verified_by_employee_code', 'verified_at']
-
-
-class AuditReportSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AuditReport
-        fields = ['id', 'report_type', 'content', 'created_by_employee_code', 'created_at', 'confirmed_at']
-        read_only_fields = ['id', 'created_by_employee_code', 'created_at', 'confirmed_at']
-
-
-class AuditCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Audit
-        fields = ['id', 'framework', 'checklist', 'department_code', 'department_name', 'project_code', 'project_name', 'audit_year', 'cycle', 'status']
-        read_only_fields = ['id', 'department_name', 'project_name', 'status']
-
-    def validate(self, attrs):
-        checklist = attrs['checklist']
-        framework = attrs['framework']
-        if checklist.framework_id != framework.id:
-            raise serializers.ValidationError({'checklist': 'Checklist belongs to a different framework.'})
-        if checklist.department_code != attrs['department_code']:
-            raise serializers.ValidationError({'department_code': 'Department does not match the selected checklist.'})
-        if not checklist.is_active:
-            raise serializers.ValidationError({'checklist': 'Selected checklist is inactive.'})
-        attrs['project_code'] = attrs.get('project_code', '')
-        attrs['department_name'] = checklist.department_name
-        return attrs
-
-
-class AuditListSerializer(serializers.ModelSerializer):
-    framework_code = serializers.CharField(source='framework.code', read_only=True)
-    checklist_title = serializers.CharField(source='checklist.title', read_only=True)
-    class Meta:
-        model = Audit
-        fields = ['id', 'framework', 'framework_code', 'checklist', 'checklist_title', 'department_code',
-                  'department_name', 'project_code', 'project_name', 'audit_year', 'cycle', 'status', 'scheduled_start', 'scheduled_end',
-                  'created_by_username', 'created_at', 'updated_at', 'closed_at']
-
-
-class AuditDetailSerializer(AuditListSerializer):
-    assignments = AuditAssignmentSerializer(many=True, read_only=True)
-    schedule = AuditScheduleSerializer(read_only=True)
-    responses = ChecklistResponseSerializer(many=True, read_only=True)
-    evidence = EvidenceSerializer(many=True, read_only=True)
-    findings = FindingSerializer(many=True, read_only=True)
-    reports = AuditReportSerializer(many=True, read_only=True)
-    events = serializers.SerializerMethodField()
-    def get_events(self, obj):
-        return [{'id': e.id, 'event_type': e.event_type, 'actor_employee_code': e.actor_employee_code, 'actor_username': e.actor_username, 'message': e.message, 'created_at': e.created_at} for e in obj.events.all()]
-
-    class Meta(AuditListSerializer.Meta):
-        fields = AuditListSerializer.Meta.fields + ['assignments', 'schedule', 'responses', 'evidence', 'findings', 'reports', 'events']
+        model = AuditChecklist
+        fields = [
+            "id",
+            "audit",
+            "audit_code",
+            "checklist_name",
+            "framework_name",
+            "department",
+            "items",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "audit",
+            "audit_code",
+            "checklist_name",
+            "framework_name",
+            "department",
+            "items",
+            "created_at",
+            "updated_at",
+        ]

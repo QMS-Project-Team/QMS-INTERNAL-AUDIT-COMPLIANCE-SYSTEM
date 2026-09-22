@@ -17,7 +17,7 @@ class Sidebar extends Component {
                 </Link>
 
                 {/* Director only */}
-                {(role === "Director") && (
+                {(role === "Director" || role === "DIRECTOR") && (
                     <>
                         <Link to="/employees">
                             Employees

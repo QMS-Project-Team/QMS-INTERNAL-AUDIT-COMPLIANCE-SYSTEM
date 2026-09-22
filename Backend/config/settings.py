@@ -11,8 +11,6 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 from pathlib import Path
-from datetime import timedelta
-import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,47 +20,45 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-v$b!vy=u7m+h)f_i%xw(f@@6mzc_*vs44-!70ms$df@&-_*ow)'
+SECRET_KEY = 'django-insecure-%#4%1%1idt^3v66*rcrh1bnznqt6c6teuv$b8auniml3r3@8b$'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '192.168.0.4',
-]
+
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'rest_framework_simplejwt.token_blacklist',
-    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'team',
 
+    #################
     'rest_framework',
-
-    'employees',
-    'qms',
-    'checklists',
+    'rest_framework_simplejwt',
+    "corsheaders",
+    'accounts',
+    'projects',
+    'frameworks',
     'audits',
+
 ]
 
 MIDDLEWARE = [
+    
+
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -92,7 +88,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR.parent / 'db.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -132,8 +128,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR.parent / 'media'
 
 
 # Email
@@ -144,21 +138,46 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+######################
+AUTH_USER_MODEL = "accounts.User"
+
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
 }
+
+from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
+
+# CORS_ALLOW_ALL_ORIGINS = True
+
+
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "192.168.0.4",
+    "localhost",
+    "crabmeat-landfill-zealous.ngrok-free.dev",
+] 
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://crabmeat-landfill-zealous.ngrok-free.dev",
+]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://192.168.0.4:5173",
 ]
 
-MASTER_API_URL = os.getenv("MASTER_API_URL", "http://127.0.0.1:8001/api")
-MASTER_API_TIMEOUT = float(os.getenv("MASTER_API_TIMEOUT", "5"))
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]

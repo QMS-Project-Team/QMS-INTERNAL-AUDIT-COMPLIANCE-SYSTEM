@@ -37,21 +37,21 @@ function App() {
                 {/* Employee */}
                 <Route
                     path="/employees"
-                    element={<ProtectedRoute allowedRoles={["Director"]}>
+                    element={<ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
                             <Employees />
                         </ProtectedRoute>}
                 />
                 {/* Employee */}
                 <Route
                     path="/projects"
-                    element={<ProtectedRoute allowedRoles={["Director"]}>
+                    element={<ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
                             <Projects />
                         </ProtectedRoute>}
                 />
 
                 <Route
                     path="/projects/add"
-                    element={<ProtectedRoute allowedRoles={["Director"]}>
+                    element={<ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
                             <AddProject />
                         </ProtectedRoute>}
                 /> 
@@ -59,7 +59,7 @@ function App() {
                 <Route
                     path="/checklists"
                     element={
-                        <ProtectedRoute allowedRoles={["Director"]}>
+                        <ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
                             <ChecklistManagement />
                         </ProtectedRoute>
                     }
@@ -68,7 +68,7 @@ function App() {
                 <Route
                     path="/checklists/add"
                     element={
-                        <ProtectedRoute allowedRoles={["Director"]}>
+                        <ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
                             <AddChecklist />
                         </ProtectedRoute>
                     }
@@ -77,7 +77,7 @@ function App() {
                 <Route
                     path="/checklists/:id/items"
                     element={
-                        <ProtectedRoute allowedRoles={["Director"]}>
+                        <ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
                             <ChecklistItems />
                         </ProtectedRoute>
                     }
@@ -86,7 +86,7 @@ function App() {
                 <Route
                     path="/audits/add"
                     element={
-                        <ProtectedRoute allowedRoles={["Director"]}>
+                        <ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
                             <AddAudit />
                         </ProtectedRoute>
                     }
