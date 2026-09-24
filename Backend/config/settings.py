@@ -147,6 +147,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
 }
 
 from datetime import timedelta

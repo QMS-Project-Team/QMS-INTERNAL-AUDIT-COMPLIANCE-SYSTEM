@@ -1,101 +1,49 @@
-import {
-    BrowserRouter,
-    Routes,
-    Route,
-    Navigate
-} from "react-router-dom";
-
-import Login from "./Login";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthContext";
+import RequireAuth from "./auth/RequireAuth";
+import { ToastProvider } from "./components/Toast";
+import Layout from "./components/Layout";
+import { ROLES } from "./constants";
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Employees from "./pages/Employees";
-import Projects from "./pages/Projects";
-import AddProject from "./pages/AddProject";
-import ProtectedRoute from "./ProtectedRoute";
-import ChecklistManagement from "./pages/ChecklistManagement";
-import AddChecklist from "./pages/AddChecklist";
-import ChecklistItems from "./pages/ChecklistItems";
-import AddAudit from "./pages/AddAudit";
+import ProjectsPage from "./pages/projects/ProjectsPage";
+import AuditsPage from "./pages/audits/AuditsPage";
+import AuditDetailPage from "./pages/audits/AuditDetailPage";
+import ChecklistsPage from "./pages/checklists/ChecklistsPage";
+import ChecklistDetailPage from "./pages/checklists/ChecklistDetailPage";
+import FrameworksPage from "./pages/FrameworksPage";
+import DepartmentsPage from "./pages/DepartmentsPage";
+import OrientationsPage from "./pages/OrientationsPage";
 
-function App() {
+const { DIRECTOR, MANAGER, QMS, AUDITOR } = ROLES;
+const STAFF = [DIRECTOR, MANAGER, QMS];
 
+const guarded = (element, roles) => <RequireAuth roles={roles}>{element}</RequireAuth>;
+
+export default function App() {
     return (
         <BrowserRouter>
+            <AuthProvider>
+                <ToastProvider>
+                    <Routes>
+                        <Route path="/login" element={<Login />} />
 
-            <Routes>
+                        <Route element={guarded(<Layout />)}>
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/projects" element={guarded(<ProjectsPage />, STAFF)} />
+                            <Route path="/audits" element={guarded(<AuditsPage />, STAFF)} />
+                            <Route path="/audits/:id" element={guarded(<AuditDetailPage />, STAFF)} />
+                            <Route path="/checklists" element={guarded(<ChecklistsPage />, STAFF)} />
+                            <Route path="/checklists/:id" element={guarded(<ChecklistDetailPage />, STAFF)} />
+                            <Route path="/frameworks" element={guarded(<FrameworksPage />, STAFF)} />
+                            <Route path="/departments" element={guarded(<DepartmentsPage />, STAFF)} />
+                            <Route path="/orientations" element={guarded(<OrientationsPage />, [QMS, AUDITOR])} />
+                        </Route>
 
-                {/* Login */}
-                <Route
-                    path="/"
-                    element={<Login />}
-                /> 
-                {/* Dashboard */}
-                <Route
-                    path="/dashboard"
-                    element={<Dashboard />}
-                />
-
-                {/* Employee */}
-                <Route
-                    path="/employees"
-                    element={<ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
-                            <Employees />
-                        </ProtectedRoute>}
-                />
-                {/* Employee */}
-                <Route
-                    path="/projects"
-                    element={<ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
-                            <Projects />
-                        </ProtectedRoute>}
-                />
-
-                <Route
-                    path="/projects/add"
-                    element={<ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
-                            <AddProject />
-                        </ProtectedRoute>}
-                /> 
-
-                <Route
-                    path="/checklists"
-                    element={
-                        <ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
-                            <ChecklistManagement />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/checklists/add"
-                    element={
-                        <ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
-                            <AddChecklist />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/checklists/:id/items"
-                    element={
-                        <ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
-                            <ChecklistItems />
-                        </ProtectedRoute>
-                    }
-                />
-
-                <Route
-                    path="/audits/add"
-                    element={
-                        <ProtectedRoute allowedRoles={["Director","DIRECTOR"]}>
-                            <AddAudit />
-                        </ProtectedRoute>
-                    }
-                />
-
-            </Routes>
-
+                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Routes>
+                </ToastProvider>
+            </AuthProvider>
         </BrowserRouter>
     );
 }
-
-export default App;

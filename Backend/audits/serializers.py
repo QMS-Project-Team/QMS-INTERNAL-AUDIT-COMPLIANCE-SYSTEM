@@ -110,6 +110,19 @@ class AuditorNominationSerializer(
                 "An auditor cannot audit their own department."
             )
 
+        duplicate = AuditorNomination.objects.filter(
+            audit=audit,
+            auditor=auditor
+        )
+
+        if self.instance:
+            duplicate = duplicate.exclude(pk=self.instance.pk)
+
+        if duplicate.exists():
+            raise serializers.ValidationError(
+                "This auditor is already nominated for this audit."
+            )
+
         return attrs
 
 
@@ -174,6 +187,19 @@ class AuditorAssignmentSerializer(serializers.ModelSerializer):
         if not is_nominated:
             raise serializers.ValidationError(
                 "Auditor must be nominated for this audit before assignment."
+            )
+
+        duplicate = AuditorAssignment.objects.filter(
+            audit=audit,
+            auditor=auditor
+        )
+
+        if self.instance:
+            duplicate = duplicate.exclude(pk=self.instance.pk)
+
+        if duplicate.exists():
+            raise serializers.ValidationError(
+                "This auditor is already assigned to this audit."
             )
 
         return attrs
@@ -243,6 +269,7 @@ class AuditScheduleSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             "id",
+            "audit",
             "audit_code",
             "status",
             "scheduled_by",
@@ -252,7 +279,16 @@ class AuditScheduleSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs):
-        if attrs["scheduled_end"] <= attrs["scheduled_start"]:
+        start = attrs.get(
+            "scheduled_start",
+            getattr(self.instance, "scheduled_start", None)
+        )
+        end = attrs.get(
+            "scheduled_end",
+            getattr(self.instance, "scheduled_end", None)
+        )
+
+        if start and end and end <= start:
             raise serializers.ValidationError(
                 "Scheduled end must be after scheduled start."
             )
@@ -286,6 +322,7 @@ class AuditConfirmationSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             "id",
+            "schedule",
             "audit_code",
             "confirmed_at",
             "confirmed_by",
