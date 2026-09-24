@@ -170,7 +170,7 @@ class Projects extends Component {
 
                                             {/* Manager */}
                                             <td>
-                                                {project.manager}
+                                                {project.project_owner_name}
                                             </td>
 
 
@@ -179,7 +179,7 @@ class Projects extends Component {
 
                                                 <span
                                                     className={
-                                                        project.status === "Active"
+                                                        (project.status === "Active" || project.status === "ACTIVE")
                                                             ? "status active-status"
                                                             : "status inactive-status"
                                                     }

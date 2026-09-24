@@ -1,32 +1,119 @@
 import React, { Component } from "react";
 import Sidebar from "../components/Sidebar";
+import withNavigation from "../withNavigation";
+import api from "../api";
 import "../styles/add-project.css";
 
 class AddProject extends Component {
-
     constructor(props) {
         super(props);
 
         this.state = {
             name: "",
             description: "",
-            department: "", 
+            department: "",
             status: "Active",
+            poc: "",
+            framework: "",
+
+            departments: [],
+            frameworks: [],
+
             error: "",
-            poc:"",
-            framework:""
+            success: "",
+            loading: false,
+            loadingDepartments: true,
+            loadingFrameworks: true,
         };
     }
+
+    // =========================================
+    // LOAD DATA WHEN PAGE OPENS
+    // =========================================
+
+    componentDidMount() {
+        this.loadDepartments();
+        this.loadFrameworks();
+    }
+
+    // =========================================
+    // GET DEPARTMENTS
+    // =========================================
+
+    loadDepartments = async () => {
+        try {
+            const response = await api.get("/departments/");
+
+            console.log(
+                "Departments API response:",
+                response.data
+            );
+
+            this.setState({
+                departments: response.data,
+                loadingDepartments: false,
+            });
+        } catch (error) {
+            console.error(
+                "Failed to load departments:",
+                error.response?.data || error.message
+            );
+
+            this.setState({
+                loadingDepartments: false,
+                error: "Failed to load departments.",
+            });
+        }
+    };
+
+    // =========================================
+    // GET FRAMEWORKS
+    // =========================================
+
+    loadFrameworks = async () => {
+        try {
+            const response = await api.get("/frameworks/");
+
+            console.log(
+                "Frameworks API response:",
+                response.data
+            );
+
+            this.setState({
+                frameworks: response.data,
+                loadingFrameworks: false,
+            });
+        } catch (error) {
+            console.error(
+                "Failed to load frameworks:",
+                error.response?.data || error.message
+            );
+
+            this.setState({
+                loadingFrameworks: false,
+                error: "Failed to load compliance frameworks.",
+            });
+        }
+    };
+
+    // =========================================
+    // HANDLE INPUT CHANGE
+    // =========================================
 
     handleChange = (event) => {
         const { name, value } = event.target;
 
         this.setState({
-            [name]: value
+            [name]: value,
+            error: "",
         });
     };
 
-    handleSubmit = (event) => {
+    // =========================================
+    // CREATE PROJECT
+    // =========================================
+
+    handleSubmit = async (event) => {
         event.preventDefault();
 
         const {
@@ -35,50 +122,142 @@ class AddProject extends Component {
             department,
             status,
             poc,
-            framework
+            framework,
         } = this.state;
 
-        if (!name || !description || !department || !poc || !framework) {
+        // =========================================
+        // VALIDATION
+        // =========================================
+
+        if (
+            !name.trim() ||
+            !description.trim() ||
+            !department ||
+            !poc ||
+            !framework
+        ) {
             this.setState({
-                error: "Please fill all required fields."
+                error: "Please fill all required fields.",
+                success: "",
             });
 
             return;
         }
 
+        // =========================================
+        // PROJECT DATA
+        // =========================================
+
         const projectData = {
-            name,
-            description,
-            department, 
-            status,
-            framework,
-            
+            name: name.trim(),
+            description: description.trim(),
+            department: department,
+            status: status,
+            poc: poc,
+            framework: framework,
         };
 
         console.log("Project Data:", projectData);
 
-        // Later we will send this data to Django API
-        // api.post("/projects/", projectData);
+        this.setState({
+            loading: true,
+            error: "",
+            success: "",
+        });
 
-        alert("Project added successfully!");
+        // =========================================
+        // POST PROJECT
+        // =========================================
 
-        this.props.navigate("/projects")
+        try {
+            const response = await api.post(
+                "/projects/",
+                projectData
+            );
+
+            console.log(
+                "Project created successfully:",
+                response.data
+            );
+
+            this.setState({
+                loading: false,
+                success: "Project created successfully!",
+            });
+
+            setTimeout(() => {
+                this.props.navigate("/projects");
+            }, 800);
+
+        } catch (error) {
+            console.error(
+                "Create project error:",
+                error.response?.data || error.message
+            );
+
+            let errorMessage =
+                "Failed to create project.";
+
+            if (error.response?.data) {
+                const backendError =
+                    error.response.data;
+
+                if (backendError.detail) {
+                    errorMessage =
+                        backendError.detail;
+                } else if (
+                    typeof backendError === "object"
+                ) {
+                    errorMessage =
+                        Object.entries(backendError)
+                            .map(([field, messages]) => {
+                                const message =
+                                    Array.isArray(messages)
+                                        ? messages.join(", ")
+                                        : messages;
+
+                                return `${field}: ${message}`;
+                            })
+                            .join(" | ");
+                }
+            }
+
+            this.setState({
+                loading: false,
+                error: errorMessage,
+                success: "",
+            });
+        }
     };
+
+    // =========================================
+    // CANCEL
+    // =========================================
 
     handleCancel = () => {
-        this.props.navigate("/projects")
+        this.props.navigate("/projects");
     };
 
-    render() {
+    // =========================================
+    // RENDER
+    // =========================================
 
+    render() {
         const {
             name,
             description,
-            department, 
+            department,
             status,
             error,
+            success,
             poc,
-            framework
+            framework,
+            loading,
+            departments,
+            project_code,
+            frameworks,
+            loadingDepartments,
+            loadingFrameworks,
         } = this.state;
 
         return (
@@ -87,35 +266,35 @@ class AddProject extends Component {
 
                 <div className="add-project-page">
 
-                    {/* Page Header */}
+                    {/* PAGE HEADER */}
 
                     <div className="add-project-header">
-
                         <div>
-                            <h1>Add Project</h1>
+                            <h1>
+                                Add Project
+                            </h1>
 
                             <p>
                                 Create a new project in the QMS system
                             </p>
                         </div>
-
                     </div>
 
-
-                    {/* Form Card */}
+                    {/* FORM CARD */}
 
                     <div className="add-project-card">
 
                         <div className="form-title">
-
-                            <h2>Project Information</h2>
+                            <h2>
+                                Project Information
+                            </h2>
 
                             <p>
                                 Enter the details of the new project.
                             </p>
-
                         </div>
 
+                        {/* ERROR */}
 
                         {error && (
                             <div className="form-error">
@@ -123,11 +302,20 @@ class AddProject extends Component {
                             </div>
                         )}
 
+                        {/* SUCCESS */}
 
-                        <form onSubmit={this.handleSubmit}>
+                        {success && (
+                            <div className="form-success">
+                                {success}
+                            </div>
+                        )}
 
-                            {/* Project Name */}
+                        <form
+                            onSubmit={this.handleSubmit}
+                        >
 
+                            {/* PROJECT NAME */}
+<div className="form-row">
                             <div className="form-group">
 
                                 <label>
@@ -141,12 +329,27 @@ class AddProject extends Component {
                                     value={name}
                                     onChange={this.handleChange}
                                     placeholder="Enter project name"
+                                    disabled={loading}
                                 />
 
                             </div>
+                            <div className="form-group">
+    <label>
+        Project Code
+        <span>*</span>
+    </label>
 
-
-                            {/* Description */}
+    <input
+        type="text"
+        name="project_code"
+        value={project_code}
+        onChange={this.handleChange}
+        placeholder="Enter project code"
+        disabled={loading}
+    />
+</div>
+</div>
+                            {/* DESCRIPTION */}
 
                             <div className="form-group">
 
@@ -161,14 +364,16 @@ class AddProject extends Component {
                                     onChange={this.handleChange}
                                     placeholder="Enter project description"
                                     rows="4"
+                                    disabled={loading}
                                 />
 
                             </div>
 
-
-                            {/* Department + Manager */}
+                            {/* DEPARTMENT + POC */}
 
                             <div className="form-row">
+
+                                {/* DEPARTMENT */}
 
                                 <div className="form-group">
 
@@ -181,40 +386,31 @@ class AddProject extends Component {
                                         name="department"
                                         value={department}
                                         onChange={this.handleChange}
+                                        disabled={
+                                            loading ||
+                                            loadingDepartments
+                                        }
                                     >
 
                                         <option value="">
-                                            Select Department
+                                            {loadingDepartments
+                                                ? "Loading Departments..."
+                                                : "Select Department"}
                                         </option>
 
-                                        <option value="Quality Assurance">
-                                            Quality Assurance
-                                        </option>
-
-                                        <option value="Human Resources">
-                                            Human Resources
-                                        </option>
-
-                                        <option value="Audit">
-                                            Audit
-                                        </option>
-
-                                        <option value="Operations">
-                                            Operations
-                                        </option>
-
-                                        <option value="Risk Management">
-                                            Risk Management
-                                        </option>
-
-                                        <option value="IT">
-                                            IT
-                                        </option>
+                                        {departments.map(
+                                            (dept) => (
+                                               <option key={dept.id} value={dept.name}>
+    {dept.name}
+</option>
+                                            )
+                                        )}
 
                                     </select>
 
                                 </div>
 
+                                {/* POC */}
 
                                 <div className="form-group">
 
@@ -227,24 +423,30 @@ class AddProject extends Component {
                                         name="poc"
                                         value={poc}
                                         onChange={this.handleChange}
+                                        disabled={loading}
                                     >
 
                                         <option value="">
                                             Select POC
                                         </option>
 
-                                        <option value="Quality Assurance">
-                                            Harjot kaur
+                                        <option value="Harjot Kaur">
+                                            Harjot Kaur
                                         </option>
- 
 
                                     </select>
 
                                 </div>
 
                             </div>
+
+                            {/* FRAMEWORK + STATUS */}
+
                             <div className="form-row">
-                            <div className="form-group">
+
+                                {/* FRAMEWORK */}
+
+                                <div className="form-group">
 
                                     <label>
                                         Compliance Framework
@@ -255,50 +457,63 @@ class AddProject extends Component {
                                         name="framework"
                                         value={framework}
                                         onChange={this.handleChange}
+                                        disabled={
+                                            loading ||
+                                            loadingFrameworks
+                                        }
                                     >
 
                                         <option value="">
-                                            Select framework
+                                            {loadingFrameworks
+                                                ? "Loading Frameworks..."
+                                                : "Select Framework"}
                                         </option>
 
-                                        <option value="Quality Assurance">
-                                            ISO 9001 
-                                        </option>
- 
+                                        {frameworks.map(
+                                            (item) => (
+                                                <option
+                                                    key={item.id}
+                                                    value={item.id}
+                                                >
+                                                    {item.name}
+                                                </option>
+                                            )
+                                        )}
 
                                     </select>
 
                                 </div>
 
-                            {/* Status */}
+                                {/* STATUS */}
 
-                            <div className="form-group">
+                                <div className="form-group">
 
-                                <label>
-                                    Status
-                                </label>
+                                    <label>
+                                        Status
+                                    </label>
 
-                                <select
-                                    name="status"
-                                    value={status}
-                                    onChange={this.handleChange}
-                                >
+                                    <select
+                                        name="status"
+                                        value={status}
+                                        onChange={this.handleChange}
+                                        disabled={loading}
+                                    >
 
-                                    <option value="Active">
-                                        Active
-                                    </option>
+                                        <option value="Active">
+                                            Active
+                                        </option>
 
-                                    <option value="Inactive">
-                                        Inactive
-                                    </option>
+                                        <option value="Inactive">
+                                            Inactive
+                                        </option>
 
-                                </select>
+                                    </select>
+
+                                </div>
 
                             </div>
-                            </div>
 
-
-                            {/* Buttons */}
+                            {/* BUTTONS */}
 
                             <div className="form-actions">
 
@@ -306,6 +521,7 @@ class AddProject extends Component {
                                     type="button"
                                     className="cancel-btn"
                                     onClick={this.handleCancel}
+                                    disabled={loading}
                                 >
                                     Cancel
                                 </button>
@@ -313,8 +529,11 @@ class AddProject extends Component {
                                 <button
                                     type="submit"
                                     className="save-project-btn"
+                                    disabled={loading}
                                 >
-                                    Create Project
+                                    {loading
+                                        ? "Creating..."
+                                        : "Create Project"}
                                 </button>
 
                             </div>
@@ -329,4 +548,4 @@ class AddProject extends Component {
     }
 }
 
-export default AddProject;
+export default withNavigation(AddProject);
