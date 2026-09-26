@@ -53,6 +53,8 @@ Audit execution, evidence, findings/NCs, corrective actions and reports are not 
 ## API additions beyond the API reference
 
 - `GET /api/auth/users/?role=&department=`: read-only user directory for the nomination and assignment pickers.
+- Audit objects include read-only `progress` (nominations, assigned auditors + orientation status, checklist, schedule, confirmations) and `my_assignment` (the requesting auditor's own assignment). These power the QMS and auditor dashboards without one request per audit.
+- Auditors can list and open the audits they are assigned to, which also makes the existing `POST /api/audits/<id>/start/` and `GET /api/audits/<id>/checklist/` reachable for them.
 - `/api/checklists/<id>/items/` (+ `/<item_id>/`): CRUD for master checklist items.
 - Checklist create/update/delete is allowed for **Director** as well as QMS. Frameworks remain QMS-only.
 - Deleting a record that is still referenced (e.g. a project with audits) returns `409` with a message instead of a `500`.

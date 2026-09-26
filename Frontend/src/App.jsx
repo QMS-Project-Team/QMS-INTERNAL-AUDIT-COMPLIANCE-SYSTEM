@@ -31,8 +31,8 @@ export default function App() {
                         <Route element={guarded(<Layout />)}>
                             <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/projects" element={guarded(<ProjectsPage />, STAFF)} />
-                            <Route path="/audits" element={guarded(<AuditsPage />, STAFF)} />
-                            <Route path="/audits/:id" element={guarded(<AuditDetailPage />, STAFF)} />
+                            <Route path="/audits" element={guarded(<AuditsPage />, [...STAFF, AUDITOR])} />
+                            <Route path="/audits/:id" element={guarded(<AuditDetailPage />, [...STAFF, AUDITOR])} />
                             <Route path="/checklists" element={guarded(<ChecklistsPage />, STAFF)} />
                             <Route path="/checklists/:id" element={guarded(<ChecklistDetailPage />, STAFF)} />
                             <Route path="/frameworks" element={guarded(<FrameworksPage />, STAFF)} />
