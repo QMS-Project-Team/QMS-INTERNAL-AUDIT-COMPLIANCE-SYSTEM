@@ -11,8 +11,8 @@ class LoginSerializer(TokenObtainPairSerializer):
         data["user"] = UserSerializer(self.user).data
         return data
 
-class UserSerializer(serializers.ModelSerializer):
 
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
@@ -25,4 +25,7 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "department",
         ]
+        read_only_fields = fields
+
+
 

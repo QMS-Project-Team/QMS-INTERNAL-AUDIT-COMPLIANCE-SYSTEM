@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 
+from rest_framework import viewsets
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User
 from .serializers import LoginSerializer,UserSerializer
@@ -18,21 +19,21 @@ class MeView(APIView):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
-class UserListView(ListAPIView):
-    """Read-only user directory, used by nomination / assignment pickers."""
-
-    permission_classes = [IsAuthenticated]
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.filter(is_active=True).order_by("id")
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        queryset = User.objects.filter(is_active=True).order_by("username")
+class DepartmentListView(APIView):
+    permission_classes = [IsAuthenticated]
 
-        role = self.request.query_params.get("role")
-        if role:
-            queryset = queryset.filter(role=role)
+    def get(self, request):
+        departments = [
+            {
+                "id": value,
+                "name": label
+            }
+            for value, label in User.Department.choices
+        ]
 
-        department = self.request.query_params.get("department")
-        if department:
-            queryset = queryset.filter(department=department)
-
-        return queryset
+        return Response(departments)
