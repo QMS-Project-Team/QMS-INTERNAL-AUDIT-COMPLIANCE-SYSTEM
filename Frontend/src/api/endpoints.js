@@ -24,7 +24,7 @@ export const authApi = {
 export const projectsApi = crud("/projects");
 export const frameworksApi = crud("/frameworks");
 export const checklistsApi = crud("/checklists");
-export const departmentsApi = crud("/departments");
+export const departmentsApi = crud("/auth/departments");
 export const checklistItemsApi = (checklistId) => crud(`/checklists/${checklistId}/items`);
 
 export const auditsApi = {
