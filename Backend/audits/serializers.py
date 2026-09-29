@@ -24,6 +24,11 @@ class AuditSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    # Read-only workflow summary so list screens don't need one call per audit.
+    progress = serializers.SerializerMethodField()
+
+    my_assignment = serializers.SerializerMethodField()
+
     class Meta:
         model = Audit
 
@@ -40,6 +45,8 @@ class AuditSerializer(serializers.ModelSerializer):
             "planned_start_date",
             "planned_end_date",
             "status",
+            "progress",
+            "my_assignment",
             "created_at",
             "updated_at",
         ]
@@ -50,9 +57,79 @@ class AuditSerializer(serializers.ModelSerializer):
             "created_by_name",
             "project_name",
             "framework_name",
+            "progress",
+            "my_assignment",
             "created_at",
             "updated_at",
         ]
+
+    def get_progress(self, audit):
+        assignments = list(audit.auditor_assignments.all())
+
+        auditors = []
+        for assignment in assignments:
+            orientation = getattr(assignment, "orientation", None)
+            auditors.append({
+                "assignment_id": assignment.id,
+                "auditor": assignment.auditor_id,
+                "auditor_name": assignment.auditor.username,
+                "assignment_type": assignment.assignment_type,
+                "orientation_status": orientation.status if orientation else None,
+            })
+
+        schedule = None
+        confirmations = []
+        if hasattr(audit, "schedule"):
+            schedule = {
+                "id": audit.schedule.id,
+                "scheduled_start": audit.schedule.scheduled_start,
+                "scheduled_end": audit.schedule.scheduled_end,
+                "status": audit.schedule.status,
+            }
+            confirmations = sorted(
+                c.confirmation_type for c in audit.schedule.confirmations.all()
+            )
+
+        checklist = None
+        if hasattr(audit, "audit_checklist"):
+            checklist = {
+                "id": audit.audit_checklist.id,
+                "name": audit.audit_checklist.checklist.name,
+                "item_count": len(audit.audit_checklist.items.all()),
+            }
+
+        return {
+            "nomination_count": len(audit.auditor_nominations.all()),
+            "auditors": auditors,
+            "orientations_total": sum(1 for a in auditors if a["orientation_status"]),
+            "orientations_completed": sum(
+                1 for a in auditors if a["orientation_status"] == "COMPLETED"
+            ),
+            "checklist": checklist,
+            "schedule": schedule,
+            "confirmations": confirmations,
+        }
+
+    def get_my_assignment(self, audit):
+        """The requesting user's own assignment on this audit, if any."""
+        request = self.context.get("request")
+        if not request:
+            return None
+
+        for assignment in audit.auditor_assignments.all():
+            if assignment.auditor_id == request.user.id:
+                orientation = getattr(assignment, "orientation", None)
+                return {
+                    "assignment_id": assignment.id,
+                    "assignment_type": assignment.assignment_type,
+                    "orientation_id": orientation.id if orientation else None,
+                    "orientation_status": orientation.status if orientation else None,
+                    "orientation_completed_at": (
+                        orientation.completed_at if orientation else None
+                    ),
+                }
+
+        return None
 
 
 class AuditorNominationSerializer(

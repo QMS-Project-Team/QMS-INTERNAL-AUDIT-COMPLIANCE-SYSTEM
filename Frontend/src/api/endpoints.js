@@ -31,6 +31,9 @@ export const auditsApi = {
     ...crud("/audits"),
     completeAssignment: (id) => data(client.post(`/audits/${id}/complete-assignment/`, {})),
     completeOrientation: (id) => data(client.post(`/audits/${id}/complete-orientation/`, {})),
+    // Auditor actions (already implemented on the backend).
+    start: (id) => data(client.post(`/audits/${id}/start/`, {})),
+    checklist: (id) => data(client.get(`/audits/${id}/checklist/`)),
 };
 
 export const nominationsApi = (auditId) => crud(`/audits/${auditId}/nominations`);

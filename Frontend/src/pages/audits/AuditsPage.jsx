@@ -172,7 +172,7 @@ export default function AuditsPage() {
         <>
             <PageHeader
                 title="Audits"
-                subtitle={canCreate ? "Audits you have planned." : "All audits across departments."}
+                subtitle={canCreate ? "Audits you have planned." : user.role === "AUDITOR" ? "Audits you are assigned to." : "All audits across departments."}
                 actions={canCreate && (
                     <button className="btn btn-primary" onClick={() => setDialog({ type: "form" })} disabled={!data}>+ New audit</button>
                 )}

@@ -121,6 +121,35 @@ class AuditFlowTests(TestCase):
             AuditSchedule.Status.CONFIRMED,
         )
 
+        # QMS list carries the workflow summary.
+        audit = qms.get("/api/audits/").data[0]
+        self.assertEqual(audit["progress"]["nomination_count"], 2)
+        self.assertEqual(audit["progress"]["schedule"]["status"], "CONFIRMED")
+        self.assertEqual(audit["progress"]["confirmations"], ["COMBINED", "INDIVIDUAL"])
+        self.assertEqual(audit["progress"]["checklist"]["item_count"], 2)
+        self.assertEqual(audit["progress"]["orientations_completed"], 0)
+        self.assertIsNone(audit["my_assignment"])
+
+        # Auditors see only their own audits, with their assignment.
+        auditor = self.as_user(self.auditor1)
+        mine = auditor.get("/api/audits/").data
+        self.assertEqual([a["id"] for a in mine], [audit_id])
+        self.assertEqual(mine[0]["my_assignment"]["assignment_type"], "PRIMARY")
+        self.assertEqual(self.as_user(self.qa_auditor).get("/api/audits/").data, [])
+
+        # Starting needs orientation first, then works.
+        auditor = self.as_user(self.auditor1)
+        self.assertEqual(auditor.post(f"/api/audits/{audit_id}/start/").status_code, 400)
+        orientation_id = mine[0]["my_assignment"]["orientation_id"]
+        self.assertEqual(auditor.post(f"/api/orientations/{orientation_id}/complete/").status_code, 200)
+        started = auditor.post(f"/api/audits/{audit_id}/start/")
+        self.assertEqual(started.status_code, 200, started.data)
+        self.assertEqual(started.data["status"], "IN_PROGRESS")
+
+        checklist = auditor.get(f"/api/audits/{audit_id}/checklist/")
+        self.assertEqual(checklist.status_code, 200, checklist.data)
+        self.assertEqual(len(checklist.data["items"]), 2)
+
     def test_deleting_project_in_use_returns_409(self):
         self.create_audit()
         response = self.client.delete(f"/api/projects/{self.project.id}/")

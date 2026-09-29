@@ -19,6 +19,7 @@ const NAV = [
     { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { to: "/projects", label: "Projects", icon: "projects", roles: [DIRECTOR, MANAGER, QMS] },
     { to: "/audits", label: "Audits", icon: "audits", roles: [DIRECTOR, MANAGER, QMS] },
+    { to: "/audits", label: "My audits", icon: "audits", roles: [AUDITOR] },
     { to: "/checklists", label: "Checklists", icon: "checklists", roles: [DIRECTOR, MANAGER, QMS] },
     { to: "/frameworks", label: "Frameworks", icon: "frameworks", roles: [DIRECTOR, MANAGER, QMS] },
     { to: "/departments", label: "Departments", icon: "departments", roles: [DIRECTOR, MANAGER, QMS] },
@@ -60,7 +61,7 @@ export default function Layout() {
 
                 <nav className="nav">
                     {items.map((item) => (
-                        <NavLink key={item.to} to={item.to} onClick={() => setOpen(false)}
+                        <NavLink key={item.label} to={item.to} onClick={() => setOpen(false)}
                             className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
                             <Icon name={item.icon} />
                             {item.label}

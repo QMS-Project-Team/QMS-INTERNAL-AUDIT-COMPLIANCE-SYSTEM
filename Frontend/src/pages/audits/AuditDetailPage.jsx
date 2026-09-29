@@ -14,6 +14,7 @@ import { formatDate, formatDateTime } from "../../utils/format";
 import { AUDIT_STATUS_LABELS, ROLES, departmentLabel, isManagement } from "../../constants";
 import { isEditableAudit } from "../../permissions";
 import { AuditForm } from "./AuditsPage";
+import AuditorActions from "../../components/AuditorActions";
 
 const STATUS_ORDER = ["DRAFT", "PENDING_ASSIGNMENT", "ASSIGNED", "IN_PROGRESS", "PENDING_CLOSURE", "CLOSED"];
 const reached = (audit, status) => STATUS_ORDER.indexOf(audit.status) >= STATUS_ORDER.indexOf(status);
@@ -261,10 +262,14 @@ function AssignmentsSection({ audit, nominations, assignments, orientations, aud
     );
 }
 
-function OrientationSection({ audit, orientations, isQMS, run, busy }) {
-    if (!orientations) {
-        return <p className="muted">Auditors complete orientation from their own dashboards. QMS tracks progress here.</p>;
-    }
+function OrientationSection({ audit, orientations: qmsOrientations, isQMS, run, busy, onChanged }) {
+    // QMS gets full orientation records; everyone else uses the audit's progress summary.
+    const orientations = qmsOrientations || (audit.progress?.auditors || []).map((a) => ({
+        id: a.assignment_id,
+        auditor_name: a.auditor_name,
+        status: a.orientation_status || "PENDING",
+        completed_at: null,
+    }));
     const done = orientations.filter((o) => o.status === "COMPLETED").length;
 
     return (
@@ -284,6 +289,9 @@ function OrientationSection({ audit, orientations, isQMS, run, busy }) {
                     </li>
                 ))}
             </ul>
+            {audit.my_assignment?.orientation_status === "PENDING" && (
+                <AuditorActions audit={audit} onChanged={onChanged} />
+            )}
             {isQMS && audit.status === "ASSIGNED" && (
                 <button className="btn btn-ghost" disabled={busy === "orientation"}
                     onClick={() => run("orientation", () => auditsApi.completeOrientation(audit.id), (r) => r.detail)}>
@@ -424,7 +432,7 @@ export default function AuditDetailPage() {
         { label: "Orientation", state: stateOf(allOriented === true || (allOriented === null && Boolean(schedule)), assigned && !schedule) },
         { label: "Schedule", state: stateOf(Boolean(schedule), assigned && !schedule) },
         { label: "Confirm", state: stateOf(schedule?.status === "CONFIRMED", Boolean(schedule) && schedule.status !== "CONFIRMED") },
-        { label: "Execute", state: "upcoming" },
+        { label: "Execute", state: audit.status === "IN_PROGRESS" ? "current" : reached(audit, "PENDING_CLOSURE") ? "done" : "upcoming" },
     ];
 
     return (
@@ -480,7 +488,7 @@ export default function AuditDetailPage() {
 
             <Section step={3} title="Auditor orientation" owner="Auditors" state={steps[2].state}>
                 {assigned ? (
-                    <OrientationSection audit={audit} orientations={orientations} isQMS={isQMS} run={run} busy={busy} />
+                    <OrientationSection audit={audit} orientations={orientations} isQMS={isQMS} run={run} busy={busy} onChanged={reload} />
                 ) : (
                     <p className="muted">Assigned auditors complete orientation after assignment is completed.</p>
                 )}
@@ -495,8 +503,12 @@ export default function AuditDetailPage() {
                 <ConfirmationsSection audit={audit} schedule={schedule} confirmations={confirmations} isQMS={isQMS} run={run} busy={busy} />
             </Section>
 
-            <Section step={6} title="Conduct audit, evidence & findings" state="upcoming">
+            <Section step={6} title="Conduct audit, evidence & findings" owner="Auditors" state={steps[5].state}>
+                {audit.my_assignment && audit.my_assignment.orientation_status === "COMPLETED" && (
+                    <AuditorActions audit={audit} onChanged={reload} />
+                )}
                 <p className="muted">
+                    {audit.status === "IN_PROGRESS" && "The audit has started. "}
                     Audit execution, evidence review, NCs, corrective actions and reports are not yet available on the backend.
                 </p>
             </Section>

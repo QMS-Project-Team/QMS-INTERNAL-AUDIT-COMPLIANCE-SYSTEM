@@ -59,13 +59,33 @@ class AuditViewSet(ModelViewSet):
 
         user = self.request.user
 
+        queryset = Audit.objects.select_related(
+            "project",
+            "framework",
+            "created_by",
+            "schedule",
+            "audit_checklist__checklist",
+        ).prefetch_related(
+            "auditor_nominations",
+            "auditor_assignments__auditor",
+            "auditor_assignments__orientation",
+            "schedule__confirmations",
+            "audit_checklist__items",
+        )
+
         if user.role == "QMS":
-            return Audit.objects.all()
+            return queryset
 
         if user.role in ["DIRECTOR", "MANAGER"]:
-            return Audit.objects.filter(
+            return queryset.filter(
                 created_by=user
             )
+
+        # Auditors see the audits they are assigned to.
+        if user.role == "AUDITOR":
+            return queryset.filter(
+                auditor_assignments__auditor=user
+            ).distinct()
 
         return Audit.objects.none()
 
