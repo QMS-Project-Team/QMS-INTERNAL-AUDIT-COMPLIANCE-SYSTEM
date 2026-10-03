@@ -15,18 +15,28 @@ export function PageHeader({ title, subtitle, actions }) {
 
 export function Loading({ label = "Loading…" }) {
     return (
-        <div className="state-box">
-            <span className="spinner" aria-hidden="true" />
-            {label}
+        <div className="state-box qms-loading" role="status" aria-live="polite">
+            <div className="qms-loading-orb" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+            </div>
+
+            <div className="qms-loading-content">
+                <strong>{label}</strong>
+                <span className="qms-loading-line" aria-hidden="true" />
+            </div>
         </div>
     );
 }
 
 export function ErrorBox({ message, onRetry }) {
     if (!message) return null;
+
     return (
         <div className="alert alert-error">
             <span>{message}</span>
+
             {onRetry && (
                 <button className="btn btn-sm btn-ghost" onClick={onRetry}>
                     Retry
@@ -66,14 +76,29 @@ const BADGE_TONES = {
 };
 
 export function Badge({ value, label, tone }) {
-    const text = label || (value ? value.replaceAll("_", " ").toLowerCase() : "—");
-    return <span className={`badge badge-${tone || BADGE_TONES[value] || "gray"}`}>{text}</span>;
+    const text =
+        label ||
+        (value
+            ? value.replaceAll("_", " ").toLowerCase()
+            : "—");
+
+    return (
+        <span
+            className={`badge badge-${
+                tone || BADGE_TONES[value] || "gray"
+            }`}
+        >
+            {text}
+        </span>
+    );
 }
 
 export function Modal({ title, onClose, children, footer, wide }) {
     useEffect(() => {
         const onKey = (e) => e.key === "Escape" && onClose();
+
         window.addEventListener("keydown", onKey);
+
         return () => window.removeEventListener("keydown", onKey);
     }, [onClose]);
 
@@ -88,25 +113,46 @@ export function Modal({ title, onClose, children, footer, wide }) {
             >
                 <div className="modal-head">
                     <h2>{title}</h2>
-                    <button className="icon-btn" onClick={onClose} aria-label="Close">
+
+                    <button
+                        className="icon-btn"
+                        onClick={onClose}
+                        aria-label="Close"
+                    >
                         ×
                     </button>
                 </div>
-                <div className="modal-body">{children}</div>
-                {footer && <div className="modal-foot">{footer}</div>}
+
+                <div className="modal-body">
+                    {children}
+                </div>
+
+                {footer && (
+                    <div className="modal-foot">
+                        {footer}
+                    </div>
+                )}
             </div>
         </div>
     );
 }
 
 /** Confirmation dialog that runs an async action and shows its error inline. */
-export function ConfirmDialog({ title, message, confirmLabel = "Delete", danger = true, onConfirm, onClose }) {
+export function ConfirmDialog({
+    title,
+    message,
+    confirmLabel = "Delete",
+    danger = true,
+    onConfirm,
+    onClose,
+}) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
 
     const run = async () => {
         setBusy(true);
         setError("");
+
         try {
             await onConfirm();
             onClose();
@@ -122,10 +168,21 @@ export function ConfirmDialog({ title, message, confirmLabel = "Delete", danger 
             onClose={onClose}
             footer={
                 <>
-                    <button className="btn btn-ghost" onClick={onClose} disabled={busy}>
+                    <button
+                        className="btn btn-ghost"
+                        onClick={onClose}
+                        disabled={busy}
+                    >
                         Cancel
                     </button>
-                    <button className={`btn ${danger ? "btn-danger" : "btn-primary"}`} onClick={run} disabled={busy}>
+
+                    <button
+                        className={`btn ${
+                            danger ? "btn-danger" : "btn-primary"
+                        }`}
+                        onClick={run}
+                        disabled={busy}
+                    >
                         {busy ? "Working…" : confirmLabel}
                     </button>
                 </>
@@ -141,13 +198,23 @@ export function Field({ label, hint, children, full }) {
     return (
         <label className={`field ${full ? "field-full" : ""}`}>
             <span className="field-label">{label}</span>
+
             {children}
-            {hint && <span className="field-hint">{hint}</span>}
+
+            {hint && (
+                <span className="field-hint">
+                    {hint}
+                </span>
+            )}
         </label>
     );
 }
 
-export function SearchInput({ value, onChange, placeholder = "Search…" }) {
+export function SearchInput({
+    value,
+    onChange,
+    placeholder = "Search…",
+}) {
     return (
         <input
             type="search"

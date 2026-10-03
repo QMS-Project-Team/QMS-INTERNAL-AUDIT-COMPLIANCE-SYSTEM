@@ -1034,3 +1034,181 @@ body,
         transition: none;
     }
 }
+
+/* =========================================================
+   QMS LOGIN VISUAL ENHANCEMENTS
+   Existing layout, QMS particle animation and functionality
+   are intentionally preserved.
+========================================================= */
+
+:root {
+    --login-blue: #3b82f6;
+    --login-cyan: #22d3ee;
+    --login-glow: rgba(59, 130, 246, 0.28);
+    --login-border: rgba(255, 255, 255, 0.16);
+    --login-transition: 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Adds depth without changing the card position or dimensions. */
+.login-card {
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow:
+        0 30px 90px rgba(0, 0, 0, 0.70),
+        0 0 80px rgba(40, 130, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.055);
+    transition:
+        border-color var(--login-transition),
+        box-shadow var(--login-transition),
+        background var(--login-transition);
+}
+
+.login-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+        linear-gradient(135deg, rgba(255,255,255,0.045), transparent 35%),
+        radial-gradient(circle at 100% 0%, rgba(59,130,246,0.08), transparent 35%);
+}
+
+.login-card:hover {
+    border-color: rgba(96, 165, 250, 0.24);
+    box-shadow:
+        0 35px 100px rgba(0, 0, 0, 0.74),
+        0 0 110px rgba(40, 130, 255, 0.13),
+        inset 0 1px 0 rgba(255, 255, 255, 0.075);
+}
+
+.logo-icon {
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        0 0 30px rgba(37, 99, 235, 0.35),
+        inset 0 1px 0 rgba(255,255,255,0.22);
+    transition: transform var(--login-transition), box-shadow var(--login-transition), filter var(--login-transition);
+}
+
+.logo-icon::after {
+    content: "";
+    position: absolute;
+    inset: -60%;
+    background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,0.24) 50%, transparent 58%);
+    transform: translateX(-45%) rotate(12deg);
+    transition: transform 650ms ease;
+    pointer-events: none;
+}
+
+.logo-icon:hover {
+    filter: brightness(1.08);
+}
+
+.logo-icon:hover::after {
+    transform: translateX(45%) rotate(12deg);
+}
+
+.logo h1 {
+    letter-spacing: -0.35px;
+    text-shadow: 0 0 24px rgba(96, 165, 250, 0.10);
+}
+
+.welcome h2 {
+    letter-spacing: -0.7px;
+    text-shadow: 0 0 28px rgba(96, 165, 250, 0.08);
+}
+
+.login-card .form-group label {
+    transition: color var(--login-transition);
+}
+
+.login-card .form-group:focus-within label {
+    color: #b9d5ff !important;
+}
+
+.login-card input {
+    border-color: rgba(255,255,255,0.13);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
+}
+
+.login-card input:focus {
+    transform: translateY(-1px);
+    border-color: rgba(96, 165, 250, 0.78);
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.13),
+        0 0 28px rgba(37, 99, 235, 0.10),
+        inset 0 1px 0 rgba(255,255,255,0.045);
+}
+
+.forgot-password,
+.show-password {
+    transition: color var(--login-transition), text-shadow var(--login-transition), transform var(--login-transition);
+}
+
+.forgot-password:hover,
+.show-password:hover {
+    text-shadow: 0 0 14px rgba(79, 140, 255, 0.45);
+}
+
+.show-password:hover {
+    transform: translateY(-50%) scale(1.04);
+}
+
+.login-card .error-message {
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.07), inset 0 1px 0 rgba(255,255,255,0.025);
+}
+
+.login-button {
+    box-shadow:
+        0 0 8px rgba(0, 170, 255, 0.75),
+        0 0 20px rgba(0, 140, 255, 0.55),
+        0 0 40px rgba(0, 110, 255, 0.30),
+        0 8px 25px rgba(0, 80, 255, 0.25),
+        inset 0 1px 0 rgba(255,255,255,0.22);
+}
+
+.login-button:focus-visible,
+.forgot-password:focus-visible,
+.show-password:focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.9);
+    outline-offset: 3px;
+}
+
+.login-button:hover {
+    box-shadow:
+        0 0 12px rgba(0, 190, 255, 1),
+        0 0 28px rgba(0, 160, 255, 0.80),
+        0 0 55px rgba(0, 120, 255, 0.52),
+        0 14px 38px rgba(0, 100, 255, 0.38),
+        inset 0 1px 0 rgba(255,255,255,0.28);
+}
+
+.login-footer p {
+    transition: color var(--login-transition);
+}
+
+.login-footer:hover p {
+    color: rgba(255,255,255,0.58) !important;
+}
+
+/* Keep the existing QMS animated particle canvas untouched. */
+.particle-canvas {
+    background: #010509;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-card::before,
+    .logo-icon::after {
+        display: none;
+    }
+
+    .login-card,
+    .logo-icon,
+    .login-card input,
+    .forgot-password,
+    .show-password,
+    .login-button,
+    .login-footer p {
+        transition: none !important;
+    }
+}

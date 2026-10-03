@@ -113,7 +113,7 @@ a { color: inherit; text-decoration: none; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 .topbar {
-    display: none;
+    display: flex;
     align-items: center; gap: 12px;
     height: 56px; padding: 0 16px;
     background: var(--surface);
@@ -631,4 +631,1285 @@ a.cov:hover { filter: brightness(0.96); }
 @media (max-width: 820px) {
     .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .assignment-meta { grid-template-columns: minmax(0, 1fr); }
+}
+
+
+/* =========================================================
+   QMS VISUAL ENHANCEMENTS
+   Keeps the existing layout and component positions intact.
+   ========================================================= */
+
+:root {
+    --shadow-soft: 0 2px 8px rgba(20, 38, 61, 0.06), 0 8px 24px rgba(20, 38, 61, 0.05);
+    --shadow-hover: 0 8px 24px rgba(20, 38, 61, 0.10), 0 2px 6px rgba(20, 38, 61, 0.06);
+    --transition-fast: 160ms ease;
+    --transition-base: 220ms ease;
+}
+
+/* ---------- Global interaction polish ---------- */
+
+button,
+a,
+input,
+select,
+textarea {
+    -webkit-tap-highlight-color: transparent;
+}
+
+a,
+button,
+.stat-link,
+.pipe,
+.card,
+.assignment-card,
+.table tbody tr,
+.nav-link,
+.icon-btn,
+.btn {
+    transition:
+        background-color var(--transition-fast),
+        border-color var(--transition-fast),
+        color var(--transition-fast),
+        box-shadow var(--transition-base),
+        transform var(--transition-base),
+        opacity var(--transition-fast);
+}
+
+button:not(:disabled),
+a,
+[role="button"] {
+    cursor: pointer;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+    box-shadow: 4px 0 18px rgba(20, 38, 61, 0.08);
+}
+
+.brand {
+    transition: transform var(--transition-base);
+}
+
+.brand:hover {
+    transform: translateX(2px);
+}
+
+.brand-mark {
+    box-shadow: 0 5px 14px rgba(201, 120, 31, 0.22);
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.brand:hover .brand-mark {
+    transform: translateY(-1px) rotate(-2deg);
+    box-shadow: 0 8px 18px rgba(201, 120, 31, 0.28);
+}
+
+.nav-link {
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0.05), transparent);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    pointer-events: none;
+}
+
+.nav-link:hover::after {
+    opacity: 1;
+}
+
+.nav-link.active {
+    box-shadow:
+        inset 3px 0 0 var(--accent),
+        0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.avatar {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Page header ---------- */
+
+.page-head h1 {
+    letter-spacing: -0.02em;
+}
+
+.back-link {
+    transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.back-link:hover {
+    transform: translateX(-2px);
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+    box-shadow: var(--shadow-soft);
+    transition:
+        transform var(--transition-base),
+        box-shadow var(--transition-base),
+        border-color var(--transition-base);
+}
+
+.card:hover {
+    border-color: #d5ddea;
+    box-shadow: var(--shadow-hover);
+}
+
+.card-head h2 {
+    letter-spacing: -0.01em;
+}
+
+/* ---------- Stats ---------- */
+
+.stat {
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-soft);
+    transition:
+        transform var(--transition-base),
+        box-shadow var(--transition-base),
+        border-color var(--transition-base);
+}
+
+.stat::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.stat:hover {
+    transform: translateY(-3px);
+    border-color: #d3dce9;
+    box-shadow: var(--shadow-hover);
+}
+
+.stat:hover::before {
+    opacity: 1;
+}
+
+.stat-link:hover {
+    transform: translateY(-3px);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+    box-shadow: 0 1px 2px rgba(20, 38, 61, 0.04);
+}
+
+.btn:not(:disabled):hover {
+    transform: translateY(-1px);
+}
+
+.btn:not(:disabled):active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(20, 38, 61, 0.08);
+}
+
+.btn-primary {
+    box-shadow: 0 4px 12px rgba(36, 87, 197, 0.18);
+}
+
+.btn-primary:not(:disabled):hover {
+    box-shadow: 0 7px 18px rgba(36, 87, 197, 0.24);
+}
+
+.btn-success {
+    box-shadow: 0 4px 12px rgba(31, 138, 76, 0.14);
+}
+
+.btn-danger {
+    box-shadow: 0 4px 12px rgba(197, 58, 58, 0.14);
+}
+
+.btn-ghost:not(:disabled):hover {
+    box-shadow: 0 4px 12px rgba(20, 38, 61, 0.07);
+}
+
+.icon-btn {
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        transform var(--transition-fast);
+}
+
+.icon-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* ---------- Forms ---------- */
+
+.input {
+    transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        background-color var(--transition-fast);
+}
+
+.input:hover:not(:focus) {
+    border-color: #b9c5d5;
+}
+
+.input:focus {
+    box-shadow:
+        0 0 0 3px var(--primary-soft),
+        0 3px 10px rgba(36, 87, 197, 0.06);
+}
+
+.check input {
+    transition: transform var(--transition-fast);
+}
+
+.check:hover input {
+    transform: scale(1.05);
+}
+
+/* ---------- Tables ---------- */
+
+.table-wrap {
+    border-radius: var(--radius-sm);
+}
+
+.table tbody tr {
+    transition:
+        background-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.table tbody tr:hover {
+    background: #f7f9fc;
+    box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.table tbody tr:hover td:first-child {
+    color: var(--text);
+}
+
+.table td .btn {
+    vertical-align: middle;
+}
+
+/* ---------- Badges ---------- */
+
+.badge,
+.stage-pill,
+.due,
+.cov,
+.chip {
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        filter var(--transition-fast);
+}
+
+.badge:hover,
+.stage-pill:hover,
+.due:hover,
+.cov:hover,
+.chip:hover {
+    transform: translateY(-1px);
+}
+
+/* ---------- Alerts ---------- */
+
+.alert {
+    box-shadow: 0 2px 8px rgba(20, 38, 61, 0.04);
+}
+
+/* ---------- Modal ---------- */
+
+.modal-backdrop {
+    backdrop-filter: blur(3px);
+}
+
+.modal {
+    border: 1px solid rgba(207, 215, 227, 0.85);
+}
+
+.modal-head {
+    border-bottom: 1px solid transparent;
+}
+
+/* ---------- Toasts ---------- */
+
+.toast {
+    box-shadow: 0 12px 30px rgba(20, 38, 61, 0.18);
+}
+
+/* ---------- Dashboard tasks ---------- */
+
+.task {
+    transition:
+        background-color var(--transition-fast),
+        transform var(--transition-fast),
+        padding-left var(--transition-fast);
+}
+
+.task:hover {
+    transform: translateX(2px);
+    padding-left: 11px;
+}
+
+/* ---------- Audit workflow ---------- */
+
+.step-card {
+    box-shadow: var(--shadow-soft);
+    transition:
+        box-shadow var(--transition-base),
+        transform var(--transition-base),
+        border-color var(--transition-base);
+}
+
+.step-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.step-card.step-current {
+    box-shadow:
+        0 5px 18px rgba(201, 120, 31, 0.10),
+        var(--shadow-soft);
+}
+
+.stepper-dot {
+    transition:
+        transform var(--transition-base),
+        box-shadow var(--transition-base),
+        background-color var(--transition-fast);
+}
+
+.stepper-item:hover .stepper-dot {
+    transform: scale(1.06);
+}
+
+.progress span {
+    background: linear-gradient(90deg, var(--success), #35a965);
+    box-shadow: 0 0 8px rgba(31, 138, 76, 0.18);
+}
+
+/* ---------- Role dashboards ---------- */
+
+.pipe {
+    box-shadow: var(--shadow-soft);
+}
+
+.pipe:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+}
+
+.pipe.is-active {
+    box-shadow: 0 5px 16px rgba(36, 87, 197, 0.12);
+}
+
+.assignment-card {
+    box-shadow: var(--shadow-soft);
+    transition:
+        transform var(--transition-base),
+        box-shadow var(--transition-base),
+        border-color var(--transition-base);
+}
+
+.assignment-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+}
+
+.ribbon {
+    box-shadow: 0 3px 8px rgba(20, 38, 61, 0.12);
+}
+
+.segmented button {
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.segmented button:hover:not(.is-active) {
+    background: #f3f6fa;
+}
+
+/* ---------- Empty/loading states ---------- */
+
+.state-box {
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-base);
+}
+
+.state-box.empty:hover {
+    background: #fafbfd;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+
+/* =========================================================
+   QMS VISUAL ENHANCEMENTS — POLISH LAYER 2
+   Keeps the existing structure, spacing and component positions intact.
+   ========================================================= */
+
+:root {
+    --shadow-float: 0 12px 28px rgba(20, 38, 61, 0.10), 0 3px 8px rgba(20, 38, 61, 0.05);
+    --shadow-focus: 0 0 0 3px rgba(36, 87, 197, 0.10), 0 8px 20px rgba(36, 87, 197, 0.08);
+    --surface-soft: #f8fafc;
+}
+
+/* ---------- Page polish ---------- */
+
+.content {
+    animation: qmsContentIn 260ms ease both;
+}
+
+@keyframes qmsContentIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.page-head h1 {
+    background: linear-gradient(90deg, var(--text), var(--navy-700));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* ---------- Sidebar micro-interactions ---------- */
+
+.nav-link svg,
+.nav-link i {
+    transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.nav-link:hover svg,
+.nav-link:hover i {
+    transform: translateX(2px);
+}
+
+.nav-link.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 7px;
+    bottom: 7px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(201, 120, 31, 0.25);
+}
+
+.sidebar-user {
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.sidebar-user:hover {
+    background: rgba(255, 255, 255, 0.025);
+}
+
+/* ---------- Topbar ---------- */
+
+.topbar {
+    box-shadow: 0 2px 10px rgba(20, 38, 61, 0.05);
+}
+
+.topbar-title {
+    letter-spacing: -0.01em;
+}
+
+/* ---------- Card depth + subtle highlight ---------- */
+
+.card,
+.stat,
+.assignment-card,
+.step-card,
+.pipe {
+    position: relative;
+}
+
+.card::after,
+.stat::after,
+.assignment-card::after,
+.step-card::after,
+.pipe::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(255,255,255,0.55), transparent 38%);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.card:hover::after,
+.stat:hover::after,
+.assignment-card:hover::after,
+.step-card:hover::after,
+.pipe:hover::after {
+    opacity: 1;
+}
+
+.card:hover {
+    transform: translateY(-1px);
+}
+
+/* ---------- Stat cards ---------- */
+
+.stat-value {
+    transition: color var(--transition-fast), transform var(--transition-base);
+}
+
+.stat:hover .stat-value {
+    transform: translateX(1px);
+}
+
+.stat-label {
+    transition: color var(--transition-fast);
+}
+
+.stat:hover .stat-label {
+    color: var(--primary);
+}
+
+/* ---------- Buttons: richer feedback ---------- */
+
+.btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -120%;
+    width: 70%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+    transform: skewX(-18deg);
+    transition: left 420ms ease;
+    pointer-events: none;
+}
+
+.btn:not(:disabled):hover::after {
+    left: 140%;
+}
+
+.btn-primary:not(:disabled):active,
+.btn-success:not(:disabled):active,
+.btn-danger:not(:disabled):active {
+    filter: brightness(0.97);
+}
+
+.btn:focus-visible {
+    box-shadow: var(--shadow-focus);
+}
+
+.icon-btn:focus-visible {
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* ---------- Form polish ---------- */
+
+.field {
+    transition: transform var(--transition-fast);
+}
+
+.field:focus-within .field-label {
+    color: var(--primary);
+}
+
+.input::placeholder {
+    color: #a0a9b7;
+    transition: color var(--transition-fast);
+}
+
+.input:focus::placeholder {
+    color: #b5bdc9;
+}
+
+textarea.input:focus,
+select.input:focus {
+    box-shadow: var(--shadow-focus);
+}
+
+/* ---------- Tables ---------- */
+
+.table th {
+    position: relative;
+}
+
+.table th::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -1px;
+    height: 2px;
+    background: var(--primary);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--transition-base);
+}
+
+.table th:hover::after {
+    transform: scaleX(1);
+}
+
+.table tbody tr:last-child td {
+    border-bottom-color: transparent;
+}
+
+/* ---------- Status badges ---------- */
+
+.badge,
+.stage-pill,
+.due,
+.cov,
+.chip {
+    box-shadow: 0 1px 3px rgba(20, 38, 61, 0.05);
+}
+
+.badge:hover,
+.stage-pill:hover,
+.due:hover,
+.cov:hover,
+.chip:hover {
+    box-shadow: 0 4px 10px rgba(20, 38, 61, 0.09);
+}
+
+/* ---------- Toolbar ---------- */
+
+.toolbar .input:hover:not(:focus) {
+    box-shadow: 0 2px 8px rgba(20, 38, 61, 0.04);
+}
+
+/* ---------- Audit progress ---------- */
+
+.progress {
+    overflow: hidden;
+    border-radius: 999px;
+}
+
+.progress span {
+    position: relative;
+    overflow: hidden;
+}
+
+.progress span::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+    transform: translateX(-100%);
+    animation: qmsProgressShine 2.6s ease-in-out infinite;
+}
+
+@keyframes qmsProgressShine {
+    0%, 45% { transform: translateX(-100%); }
+    75%, 100% { transform: translateX(100%); }
+}
+
+/* ---------- Empty / loading states ---------- */
+
+.state-box.empty {
+    border: 1px dashed var(--border-strong);
+}
+
+.state-box.empty:hover {
+    border-color: #b9c8dc;
+    box-shadow: inset 0 0 0 1px rgba(36, 87, 197, 0.03);
+}
+
+/* ---------- Scrollbar polish ---------- */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #c8d1df transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #c8d1df;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #aebacc;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+/* ---------- Selection ---------- */
+
+::selection {
+    background: var(--primary-soft);
+    color: var(--navy-900);
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .content {
+        animation: none !important;
+    }
+
+    .progress span::after {
+        animation: none !important;
+    }
+}
+/* =========================================================
+   PREMIUM PAGE TRANSITIONS
+   Smooth content transitions without changing layout
+   ========================================================= */
+
+.page-transition {
+    animation: qmsPageEnter 420ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+}
+
+@keyframes qmsPageEnter {
+    0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.992);
+    }
+
+    60% {
+        opacity: 0.9;
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Keep the transition smooth on very fast navigation */
+.page-transition > * {
+    backface-visibility: hidden;
+}
+
+/* Accessibility: respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .page-transition {
+        animation: none;
+    }
+}
+
+/* =========================================================
+   QMS LIGHT / DARK THEME
+   Uses the application's existing CSS variable system.
+   ========================================================= */
+
+:root {
+    color-scheme: light;
+}
+
+html[data-theme="dark"] {
+    --bg: #0f141a;
+    --surface: #171d24;
+    --border: #29323d;
+    --border-strong: #3a4654;
+    --text: #e8edf3;
+    --text-2: #aab5c3;
+    --text-3: #7e8998;
+    --primary: #78a8e6;
+    --primary-hover: #91b9ed;
+    --primary-soft: rgba(120, 168, 230, 0.14);
+    --success: #63c58b;
+    --success-soft: rgba(99, 197, 139, 0.13);
+    --danger: #ed7777;
+    --danger-soft: rgba(237, 119, 119, 0.13);
+    --warn: #e5b66b;
+    --warn-soft: rgba(229, 182, 107, 0.13);
+    --shadow: 0 4px 14px rgba(0, 0, 0, 0.20), 0 1px 3px rgba(0, 0, 0, 0.18);
+    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.45);
+    --surface-soft: #1b222a;
+    color-scheme: dark;
+}
+
+html,
+body,
+#root,
+.shell,
+.main,
+.content,
+.topbar,
+.card,
+.stat,
+.table-wrap,
+.modal,
+.modal-head,
+.modal-foot,
+.state-box,
+.input,
+select,
+textarea,
+.btn,
+.icon-btn,
+.task,
+.action-row,
+.pipe,
+.assignment-card,
+.step-card,
+.confirm-tile,
+.segmented button {
+    transition: background-color 260ms ease, border-color 260ms ease, color 220ms ease, box-shadow 260ms ease;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .main,
+html[data-theme="dark"] .content {
+    background: var(--bg);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .topbar {
+    background: #131920;
+    border-bottom-color: var(--border);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .page-head h1 {
+    background: none;
+    -webkit-text-fill-color: initial;
+    color: var(--text);
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .stat,
+html[data-theme="dark"] .pipe,
+html[data-theme="dark"] .assignment-card,
+html[data-theme="dark"] .step-card,
+html[data-theme="dark"] .confirm-tile {
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow);
+}
+
+html[data-theme="dark"] .card:hover,
+html[data-theme="dark"] .stat:hover,
+html[data-theme="dark"] .pipe:hover,
+html[data-theme="dark"] .assignment-card:hover,
+html[data-theme="dark"] .step-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] .table th {
+    background: #1b222a;
+    color: var(--text-2);
+    border-bottom-color: var(--border);
+}
+
+html[data-theme="dark"] .table td {
+    color: var(--text);
+    border-bottom-color: var(--border);
+}
+
+html[data-theme="dark"] .table tbody tr:hover {
+    background: rgba(120, 168, 230, 0.055);
+}
+
+html[data-theme="dark"] .input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+    background: #141a21;
+    color: var(--text);
+    border-color: var(--border-strong);
+}
+
+html[data-theme="dark"] .input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+    color: #697687;
+}
+
+html[data-theme="dark"] .input:hover:not(:focus) {
+    border-color: #4b5969;
+}
+
+html[data-theme="dark"] .input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus {
+    background: #141a21;
+    color: var(--text);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+html[data-theme="dark"] .btn-ghost {
+    background: #1b222a;
+    border-color: var(--border-strong);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .btn-ghost:not(:disabled):hover {
+    background: #242d38;
+    border-color: var(--primary);
+}
+
+html[data-theme="dark"] .icon-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .task:hover,
+html[data-theme="dark"] .segmented button:hover:not(.is-active) {
+    background: rgba(120, 168, 230, 0.06);
+}
+
+html[data-theme="dark"] .action-row {
+    background: #1b222a;
+    border-color: var(--border);
+}
+
+html[data-theme="dark"] .progress,
+html[data-theme="dark"] .bar {
+    background: #2b343f;
+}
+
+html[data-theme="dark"] .step-num,
+html[data-theme="dark"] .owner-tag,
+html[data-theme="dark"] .stage-pill,
+html[data-theme="dark"] .due-later,
+html[data-theme="dark"] .chip {
+    background: #222a34;
+    color: var(--text-2);
+    border-color: var(--border);
+}
+
+html[data-theme="dark"] .segmented {
+    border-color: var(--border-strong);
+}
+
+html[data-theme="dark"] .segmented button {
+    background: var(--surface);
+    color: var(--text-2);
+}
+
+html[data-theme="dark"] .segmented button + button {
+    border-left-color: var(--border-strong);
+}
+
+html[data-theme="dark"] .segmented button.is-active {
+    background: var(--navy-700);
+    color: #fff;
+}
+
+html[data-theme="dark"] .state-box {
+    background: #1a2129;
+    border-color: var(--border);
+    color: var(--text-2);
+}
+
+html[data-theme="dark"] .state-box.empty:hover {
+    background: #202832;
+    border-color: var(--border-strong);
+}
+
+html[data-theme="dark"] .modal-backdrop {
+    background: rgba(0, 0, 0, 0.68);
+}
+
+html[data-theme="dark"] .modal {
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-lg);
+}
+
+html[data-theme="dark"] .modal-foot {
+    border-top-color: var(--border);
+}
+
+html[data-theme="dark"] .toast {
+    background: #202832;
+    color: var(--text);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
+}
+
+html[data-theme="dark"] .badge-gray {
+    background: rgba(255, 255, 255, 0.07);
+    color: #b9c3cf;
+    border-color: transparent;
+}
+
+html[data-theme="dark"] .badge-blue {
+    background: rgba(120, 168, 230, 0.14);
+    color: #9fc4f0;
+    border-color: transparent;
+}
+
+html[data-theme="dark"] .badge-violet {
+    background: rgba(155, 130, 225, 0.15);
+    color: #c4b3ec;
+    border-color: transparent;
+}
+
+html[data-theme="dark"] .badge-green {
+    background: rgba(99, 197, 139, 0.14);
+    color: #82d6a4;
+    border-color: transparent;
+}
+
+html[data-theme="dark"] .badge-amber {
+    background: rgba(229, 182, 107, 0.15);
+    color: #e8c27d;
+    border-color: transparent;
+}
+
+html[data-theme="dark"] .banner-info,
+html[data-theme="dark"] .banner-warn,
+html[data-theme="dark"] .banner-danger,
+html[data-theme="dark"] .confirm-tile.is-done {
+    border-color: var(--border);
+}
+
+/* ---------- Theme toggle ---------- */
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.theme-toggle {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+}
+
+.theme-toggle:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
+    transform: translateY(-1px) rotate(3deg);
+    box-shadow: 0 6px 16px rgba(20, 38, 61, 0.10);
+}
+
+.theme-toggle:active {
+    transform: scale(0.93);
+}
+
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+html[data-theme="dark"] .theme-toggle {
+    background: #1c232c;
+    border-color: #34404d;
+    color: #e7c56e;
+}
+
+html[data-theme="dark"] .theme-toggle:hover {
+    background: #242d38;
+    color: #f1d789;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+/* ---------- Scrollbar ---------- */
+
+html[data-theme="dark"] * {
+    scrollbar-color: #465260 #11161c;
+}
+
+html[data-theme="dark"] *::-webkit-scrollbar-track {
+    background: #11161c;
+}
+
+html[data-theme="dark"] *::-webkit-scrollbar-thumb {
+    background: #465260;
+    border-color: #11161c;
+}
+
+html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
+    background: #596675;
+}
+
+/* ---------- Mobile topbar remains visible ---------- */
+
+@media (max-width: 820px) {
+    .topbar {
+        display: flex;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html,
+    body,
+    #root,
+    .shell,
+    .main,
+    .content,
+    .topbar,
+    .card,
+    .stat,
+    .table-wrap,
+    .modal,
+    .state-box,
+    .input,
+    select,
+    textarea,
+    .btn,
+    .icon-btn,
+    .task,
+    .action-row,
+    .pipe,
+    .assignment-card,
+    .step-card,
+    .confirm-tile,
+    .segmented button,
+    .theme-toggle {
+        transition: none !important;
+    }
+}
+/* ---------- Sidebar Toggle ---------- */
+
+.sidebar-toggle {
+    margin-left: auto;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #c9d3e1;
+
+    cursor: pointer;
+
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+.sidebar-toggle:active {
+    transform: scale(0.95);
+}
+
+.sidebar-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+
+/* ---------- Sidebar Reopen Button ---------- */
+
+.sidebar-reopen {
+    position: fixed;
+    top: 24px;
+    left: 14px;
+    z-index: 50;
+
+    width: 36px;
+    height: 36px;
+
+    display: grid;
+    place-items: center;
+
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-2);
+
+    cursor: pointer;
+
+    box-shadow: var(--shadow);
+
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.sidebar-reopen:hover {
+    background: var(--primary-soft);
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-1px);
+}
+/* ---------- Desktop Sidebar Collapse ---------- */
+
+@media (min-width: 821px) {
+    .shell.sidebar-collapsed .sidebar {
+        width: 72px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .shell.sidebar-collapsed .brand {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .shell.sidebar-collapsed .brand-text,
+    .shell.sidebar-collapsed .nav-label,
+    .shell.sidebar-collapsed .sidebar-user-text,
+    .shell.sidebar-collapsed .sidebar-user .icon-btn {
+        display: none;
+    }
+
+    .shell.sidebar-collapsed .sidebar-user {
+        justify-content: center;
+    }
+
+    .shell.sidebar-collapsed .nav-link {
+        justify-content: center;
+        padding-left: 9px;
+        padding-right: 9px;
+    }
+
+    .shell.sidebar-collapsed .sidebar-toggle {
+        display: none;
+    }
 }
