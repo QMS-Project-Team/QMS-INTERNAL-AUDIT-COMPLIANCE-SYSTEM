@@ -499,13 +499,14 @@ class AuditNCSerializer(serializers.ModelSerializer):
         source="audit_checklist_item.id",
         read_only=True
     )
-    target_checklist_item_id = serializers.IntegerField(
-        write_only=True,
-        required=True
-    )
 
     item_code = serializers.CharField(
         source="audit_checklist_item.checklist_item.item_code",
+        read_only=True
+    )
+
+    question = serializers.CharField(
+        source="audit_checklist_item.checklist_item.question",
         read_only=True
     )
 
@@ -521,21 +522,27 @@ class AuditNCSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AuditNC
+
         fields = [
             "id",
             "checklist_item_id",
             "item_code",
+            "question",
             "project_name",
+
             "finding",
             "risk_action",
             "correction",
             "corrective_action",
             "preventive_action",
+
             "status",
+
             "verified_by",
             "verified_by_name",
             "verified_at",
             "verification_remarks",
+
             "created_at",
             "updated_at",
         ]
@@ -544,12 +551,16 @@ class AuditNCSerializer(serializers.ModelSerializer):
             "id",
             "checklist_item_id",
             "item_code",
+            "question",
             "project_name",
+
             "status",
+
             "verified_by",
             "verified_by_name",
             "verified_at",
             "verification_remarks",
+
             "created_at",
             "updated_at",
         ]

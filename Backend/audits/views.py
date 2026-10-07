@@ -15,6 +15,7 @@ from .services import create_audit_checklist
 from accounts.permissions import IsQMS,IsDirector
 
 from accounts.models import User
+from projects.models import ProjectMember
 
 from .models import (Audit,AuditorAssignment,AuditorOrientation,
                      AuditSchedule,AuditConfirmation,
@@ -244,59 +245,8 @@ class AuditChecklistItemViewSet(
             "checklist_item"
         )
 
-    def update(self, request, *args, **kwargs):
-        audit = get_object_or_404(
-            Audit,
-            id=self.kwargs["audit_id"]
-        )
-
-        # 1. User must be assigned to this audit
-        is_assigned = AuditorAssignment.objects.filter(
-            audit=audit,
-            auditor=request.user
-        ).exists()
-
-        if not is_assigned:
-            return Response(
-                {
-                    "detail": "You are not assigned to this audit."
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        # 2. Audit must be in progress
-        if audit.status != Audit.Status.IN_PROGRESS:
-            return Response(
-                {
-                    "detail": (
-                        "Checklist items can only be updated "
-                        "while the audit is in progress."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # 3. Get the specific checklist item
-        item = get_object_or_404(
-            self.get_queryset(),
-            id=self.kwargs["pk"]
-        )
-
-        serializer = self.get_serializer(
-            item,
-            data=request.data,
-            partial=True
-        )
-
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK
-        )
-
     def partial_update(self, request, *args, **kwargs):
+
         audit = get_object_or_404(
             Audit,
             id=self.kwargs["audit_id"]
@@ -328,7 +278,7 @@ class AuditChecklistItemViewSet(
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 3. Get the specific checklist item
+        # 3. Get checklist item belonging to this audit
         item = get_object_or_404(
             self.get_queryset(),
             id=self.kwargs["pk"]
@@ -361,19 +311,29 @@ class AuditChecklistItemViewSet(
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 5. Save the current result and remarks
+        # 5. Save checklist result / remarks
         serializer.save()
 
-        # 6. Create history only when result is NON_COMPLIANT
-        if new_result == AuditChecklistItem.Result.NON_COMPLIANT:
+        # 6. Only process when item ENTERS NON_COMPLIANT state
+        if (
+            new_result == AuditChecklistItem.Result.NON_COMPLIANT
+            and old_result != AuditChecklistItem.Result.NON_COMPLIANT
+        ):
+
+            # Create NC history
             AuditChecklistItemHistory.objects.create(
                 audit_checklist_item=item,
                 remarks=item.remarks,
                 evaluated_by=request.user
             )
 
+            # Create current NC record
+            AuditNC.objects.get_or_create(
+                audit_checklist_item=item
+            )
+
         return Response(
-            serializer.data,
+            self.get_serializer(item).data,
             status=status.HTTP_200_OK
         )
 
@@ -662,114 +622,153 @@ class AuditConfirmationViewSet(viewsets.ModelViewSet):
 
 
 class AuditNCViewSet(
-    viewsets.ModelViewSet
+    viewsets.GenericViewSet,
+    RetrieveModelMixin,
+    UpdateModelMixin
 ):
+
     serializer_class = AuditNCSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+
         audit_id = self.kwargs["audit_id"]
 
-        return AuditNC.objects.filter(
+        queryset = AuditNC.objects.filter(
             audit_checklist_item__audit_checklist__audit_id=audit_id
         ).select_related(
             "audit_checklist_item",
             "audit_checklist_item__checklist_item",
+            "audit_checklist_item__audit_checklist",
             "audit_checklist_item__audit_checklist__audit",
             "audit_checklist_item__audit_checklist__audit__project",
+            "audit_checklist_item__audit_checklist__audit__project__department",
             "verified_by",
         )
 
-    def create(self, request, *args, **kwargs):
-        audit = get_object_or_404(
-            Audit,
-            id=self.kwargs["audit_id"]
+        user = self.request.user
+
+        # QMS can view all NCs
+        if user.role == User.Role.QMS:
+            return queryset
+
+        # Assigned auditor can view NC
+        if AuditorAssignment.objects.filter(
+            audit_id=audit_id,
+            auditor=user
+        ).exists():
+            return queryset
+
+        # Employees belonging to the audited project can view NC
+        if ProjectMember.objects.filter(
+            project__audits__id=audit_id,
+            employee=user
+        ).exists():
+            return queryset
+
+        return queryset.none()
+
+    def partial_update(self, request, *args, **kwargs):
+
+        nc = get_object_or_404(
+            self.get_queryset(),
+            id=kwargs["pk"]
         )
 
-        # 1. User must be assigned to this audit
-        is_assigned = AuditorAssignment.objects.filter(
-            audit=audit,
-            auditor=request.user
-        ).exists()
+        user = request.user
 
-        if not is_assigned:
+        # QMS cannot modify NC actions here
+        if user.role == User.Role.QMS:
             return Response(
                 {
-                    "detail": "You are not assigned to this audit."
+                    "detail": (
+                        "QMS can view non-conformities "
+                        "but cannot update them here."
+                    )
                 },
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # 2. Audit must be in progress
-        if audit.status != Audit.Status.IN_PROGRESS:
+        # Check whether user is an assigned auditor
+        is_auditor = AuditorAssignment.objects.filter(
+            audit=nc.audit_checklist_item.audit_checklist.audit,
+            auditor=user
+        ).exists()
+
+        # Check whether user belongs to audited project
+        is_project_member = ProjectMember.objects.filter(
+            project=nc.audit_checklist_item.audit_checklist.audit.project,
+            employee=user
+        ).exists()
+
+        # Auditor fields
+        auditor_fields = {
+            "finding",
+            "risk_action",
+        }
+
+        # Audited team fields
+        team_fields = {
+            "correction",
+            "corrective_action",
+            "preventive_action",
+        }
+
+        submitted_fields = set(request.data.keys())
+
+        # Auditor trying to update
+        if is_auditor:
+
+            invalid_fields = submitted_fields - auditor_fields
+
+            if invalid_fields:
+                return Response(
+                    {
+                        "detail": (
+                            "Auditors can only update "
+                            "finding and risk_action."
+                        ),
+                        "invalid_fields": list(invalid_fields)
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Audited team trying to update
+        elif is_project_member:
+
+            invalid_fields = submitted_fields - team_fields
+
+            if invalid_fields:
+                return Response(
+                    {
+                        "detail": (
+                            "Project members can only update "
+                            "correction, corrective_action "
+                            "and preventive_action."
+                        ),
+                        "invalid_fields": list(invalid_fields)
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        else:
             return Response(
                 {
-                    "detail": (
-                        "An NC can only be created "
-                        "while the audit is in progress."
-                    )
+                    "detail": "You do not have permission to update this NC."
                 },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # 3. Get checklist item
-        checklist_item_id = request.data.get(
-            "checklist_item_id"
-        )
-
-        if not checklist_item_id:
-            return Response(
-                {
-                    "detail": "checklist_item_id is required."
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        checklist_item = get_object_or_404(
-            AuditChecklistItem,
-            id=checklist_item_id,
-            audit_checklist__audit=audit
-        )
-
-        # 4. Checklist item must currently be NC
-        if (
-            checklist_item.result
-            != AuditChecklistItem.Result.NON_COMPLIANT
-        ):
-            return Response(
-                {
-                    "detail": (
-                        "An NC can only be created for a "
-                        "NON_COMPLIANT checklist item."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # 5. Prevent duplicate current NC
-        if AuditNC.objects.filter(
-            audit_checklist_item=checklist_item
-        ).exists():
-            return Response(
-                {
-                    "detail": (
-                        "An NC already exists for "
-                        "this checklist item."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_403_FORBIDDEN
             )
 
         serializer = self.get_serializer(
-            data=request.data
+            nc,
+            data=request.data,
+            partial=True
         )
-        serializer.is_valid(raise_exception=True)
 
-        nc = serializer.save(
-            audit_checklist_item=checklist_item
-        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
         return Response(
-            self.get_serializer(nc).data,
-            status=status.HTTP_201_CREATED
+            serializer.data,
+            status=status.HTTP_200_OK
         )

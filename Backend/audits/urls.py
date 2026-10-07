@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (AuditViewSet,AuditorAssignmentViewSet,
                     AuditorOrientationViewSet,AuditScheduleViewSet,AuditConfirmationViewSet,
-                    AuditChecklistItemViewSet)
+                    AuditChecklistItemViewSet,AuditNCViewSet)
 
 
 router = DefaultRouter()
@@ -82,4 +82,11 @@ urlpatterns = [
         }),
     ),
 
+    path(
+    "audits/<int:audit_id>/ncs/<int:pk>/",
+        AuditNCViewSet.as_view({
+            "get": "retrieve",
+            "patch": "partial_update",
+        }),
+    ),
 ]

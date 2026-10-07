@@ -119,7 +119,14 @@ a { color: inherit; text-decoration: none; }
     background: var(--surface);
     border-bottom: 1px solid var(--border);
 }
-.topbar-title { font-weight: 600; }
+.topbar-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+    line-height: 1;
+    color: var(--text);
+    white-space: nowrap;
+}
 
 .content { width: 100%; max-width: 1240px; margin: 0 auto; padding: 28px 32px 56px; }
 
@@ -1911,5 +1918,264 @@ html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
 
     .shell.sidebar-collapsed .sidebar-toggle {
         display: none;
+    }
+}
+/* ---------- Premium Typography ---------- */
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+    font-family:
+        "Inter",
+        "Segoe UI",
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        sans-serif;
+}
+
+/* Main headings */
+h1,
+h2,
+h3 {
+    letter-spacing: -0.025em;
+}
+
+/* Page titles */
+.page-head h1 {
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+/* Dashboard welcome heading */
+.dashboard h1 {
+    letter-spacing: -0.03em;
+}
+
+/* Small enterprise-style labels */
+.stat-label,
+.table th,
+.field-label {
+    letter-spacing: 0.055em;
+}
+
+/* Keep normal body text comfortable */
+p,
+.muted,
+.stat-sub,
+.task-meta {
+    letter-spacing: 0;
+}
+/* ---------- Dashboard Visual Hierarchy ---------- */
+
+/* Main page headings */
+.page-head h1,
+.dashboard h1 {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+    color: var(--text);
+}
+
+/* Dashboard section headings */
+.dashboard .card h2,
+.dashboard .panel h2,
+.dashboard .section-title {
+    font-size: 17px;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    color: var(--text);
+}
+
+/* Supporting descriptions */
+.dashboard .muted,
+.dashboard .stat-sub,
+.dashboard .task-meta {
+    color: var(--text-2);
+}
+
+/* Make important dashboard numbers stand out */
+.dashboard .stat-value {
+    font-size: 29px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Stat labels stay uppercase and compact */
+.dashboard .stat-label {
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.065em;
+    text-transform: uppercase;
+    color: var(--text-2);
+}
+
+/* Stat supporting text */
+.dashboard .stat-sub {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-3);
+}
+
+/* Dashboard introductory text */
+.dashboard > .page-head p,
+.dashboard .page-head .muted {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Table headers */
+.dashboard table th {
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+/* Slightly stronger important identifiers */
+.dashboard .task strong,
+.dashboard table td:first-child {
+    font-weight: 650;
+}
+
+/* Keep secondary information visually quieter */
+.dashboard .task-meta,
+.dashboard .muted {
+    line-height: 1.45;
+}
+
+/* Dark mode keeps the same hierarchy */
+html[data-theme="dark"] .dashboard .stat-label {
+    color: var(--text-2);
+}
+
+html[data-theme="dark"] .dashboard .stat-sub {
+    color: var(--text-3);
+}
+/* ---------- Dashboard Section Hierarchy ---------- */
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.section-heading h2 {
+    margin: 0;
+}
+
+.section-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.section-action {
+    flex-shrink: 0;
+    font-weight: 550;
+    transition:
+        color 180ms ease,
+        transform 180ms ease;
+}
+
+.section-action:hover {
+    transform: translateX(2px);
+}
+
+
+/* ---------- Dashboard Action Rows ---------- */
+
+.task {
+    position: relative;
+    cursor: pointer;
+    transition:
+        background-color 180ms ease,
+        transform 180ms ease,
+        color 180ms ease;
+}
+
+.task:hover {
+    background: color-mix(
+        in srgb,
+        var(--primary) 5%,
+        var(--surface)
+    );
+    transform: translateX(1px);
+}
+
+.task:hover .mono {
+    color: var(--primary);
+}
+
+.task-main {
+    min-width: 0;
+}
+
+.task-meta {
+    transition: color 180ms ease;
+}
+
+.task:hover .task-meta {
+    color: var(--text);
+}
+
+
+/* ---------- Upcoming Audit Dates ---------- */
+
+.audit-date {
+    color: var(--text-2);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.task:hover .audit-date {
+    color: var(--text);
+}
+
+
+/* ---------- Dark Mode ---------- */
+
+html[data-theme="dark"] .section-count {
+    background: rgba(255, 255, 255, 0.035);
+}
+
+html[data-theme="dark"] .task:hover {
+    background: color-mix(
+        in srgb,
+        var(--primary) 8%,
+        var(--surface)
+    );
+}
+
+
+/* ---------- Reduced Motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .section-action,
+    .task {
+        transition: none;
+    }
+
+    .section-action:hover,
+    .task:hover {
+        transform: none;
     }
 }
