@@ -381,7 +381,9 @@ class AuditNC(models.Model):
     )
 
     # Filled by auditor
-    finding = models.TextField()
+    finding = models.TextField(
+        blank=True
+    )
 
     # Filled by auditor
     risk_action = models.TextField(

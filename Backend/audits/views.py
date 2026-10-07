@@ -2,8 +2,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
-from rest_framework.mixins import ListModelMixin, RetrieveModelMixin,CreateModelMixin,UpdateModelMixin
 
+from rest_framework.mixins import ListModelMixin, RetrieveModelMixin,CreateModelMixin,UpdateModelMixin
+from django.db import transaction
+from rest_framework import mixins, viewsets
 
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
@@ -27,7 +29,12 @@ from .serializers import (serializers,AuditSerializer,AuditorAssignmentSerialize
                           AuditChecklistItemSerializer,AuditNCSerializer)
 
 
-class AuditViewSet(ModelViewSet):
+class AuditViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet
+):
 
     serializer_class = AuditSerializer
 
@@ -43,10 +50,10 @@ class AuditViewSet(ModelViewSet):
                 IsQMS,
             ]
 
-        elif self.action in ["update", "partial_update", "destroy"]:
-            permission_classes = [
-                IsQMS,
-            ]
+        # elif self.action in ["update", "partial_update", "destroy"]:
+        #     permission_classes = [
+        #         IsQMS,
+        #     ]
 
         else:
             permission_classes = [
@@ -83,6 +90,7 @@ class AuditViewSet(ModelViewSet):
 
         return queryset.none()
 
+    @transaction.atomic
     def perform_create(self, serializer):
         project = serializer.validated_data["project"]
 
@@ -224,6 +232,107 @@ class AuditViewSet(ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(
+    detail=True,
+    methods=["post"],
+    url_path="close"
+    )
+    def close(self, request, *args, **kwargs):
+
+        audit = self.get_object()
+
+        # 1. Only QMS can close an audit
+        if request.user.role != User.Role.QMS:
+            return Response(
+                {
+                    "detail": "Only QMS can close an audit."
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 2. Audit must be in progress
+        if audit.status != Audit.Status.IN_PROGRESS:
+            return Response(
+                {
+                    "detail": (
+                        "Only an audit in progress "
+                        "can be closed."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. Get checklist items
+        checklist_items = AuditChecklistItem.objects.filter(
+            audit_checklist__audit=audit
+        )
+
+        # 4. Checklist must contain items
+        if not checklist_items.exists():
+            return Response(
+                {
+                    "detail": "Audit has no checklist items."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 5. Every checklist item must be COMPLIANT
+        non_compliant_items = checklist_items.exclude(
+            result=AuditChecklistItem.Result.COMPLIANT
+        )
+
+        if non_compliant_items.exists():
+
+            return Response(
+                {
+                    "detail": (
+                        "Audit cannot be closed. "
+                        "All checklist items must be COMPLIANT."
+                    ),
+                    "remaining_items": non_compliant_items.count()
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 6. No unresolved NCs
+        unresolved_ncs = AuditNC.objects.filter(
+            audit_checklist_item__audit_checklist__audit=audit
+        ).exclude(
+            status=AuditNC.Status.ACCEPTED
+        )
+
+        if unresolved_ncs.exists():
+
+            return Response(
+                {
+                    "detail": (
+                        "Audit cannot be closed because "
+                        "there are unresolved non-conformities."
+                    ),
+                    "unresolved_nc_count": unresolved_ncs.count()
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 7. Close the audit
+        audit.status = Audit.Status.CLOSED
+
+        audit.save(
+            update_fields=[
+                "status",
+                "updated_at"
+            ]
+        )
+
+        return Response(
+            {
+                "detail": "Audit closed successfully.",
+                "audit_id": audit.id,
+                "status": audit.status
+            },
+            status=status.HTTP_200_OK
+        )
+
 
 class AuditChecklistItemViewSet(
     viewsets.GenericViewSet,
@@ -311,6 +420,38 @@ class AuditChecklistItemViewSet(
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # A NON_COMPLIANT item can become COMPLIANT
+        # only after its NC has been accepted by QMS.
+        if(
+            old_result == AuditChecklistItem.Result.NON_COMPLIANT
+            and new_result == AuditChecklistItem.Result.COMPLIANT
+        ):
+
+            nc = getattr(item, "nc", None)
+
+            if nc is None:
+                return Response(
+                    {
+                        "detail": (
+                            "This non-compliant item does not " 
+                            "have an associated NC."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if nc.status != AuditNC.Status.ACCEPTED:
+                return Response(
+                    {
+                        "detail": (
+                            "This checklist item cannot be marked "
+                            "COMPLIANT until its non-conformity "
+                            "has been accepted."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         # 5. Save checklist result / remarks
         serializer.save()
 
@@ -363,14 +504,30 @@ class AuditorAssignmentViewSet(ListModelMixin,
 
     def get_queryset(self):
         audit_id = self.kwargs["audit_id"]
+        user = self.request.user
 
-        return AuditorAssignment.objects.filter(
+        queryset = AuditorAssignment.objects.filter(
             audit_id=audit_id
         ).select_related(
             "audit",
             "auditor",
             "assigned_by"
         )
+
+        if user.role == User.Role.QMS:
+            return queryset
+
+        if user.role == User.Role.DIRECTOR:
+            return queryset.filter(
+                audit__project__project_owner=user
+            )
+
+        if user.role == User.Role.EMPLOYEE:
+            return queryset.filter(
+                audit__auditor_assignments__auditor=user
+            ).distinct()
+
+        return queryset.none()
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -677,37 +834,125 @@ class AuditNCViewSet(
 
         user = request.user
 
-        # QMS cannot modify NC actions here
-        if user.role == User.Role.QMS:
+        # -------------------------------------------------
+        # 1. ACCEPTED NC IS LOCKED
+        # -------------------------------------------------
+        if nc.status == AuditNC.Status.ACCEPTED:
             return Response(
                 {
                     "detail": (
-                        "QMS can view non-conformities "
-                        "but cannot update them here."
+                        "This non-conformity has already been accepted "
+                        "and cannot be modified."
                     )
                 },
-                status=status.HTTP_403_FORBIDDEN
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check whether user is an assigned auditor
+        # -------------------------------------------------
+        # 2. QMS VERIFICATION
+        # -------------------------------------------------
+        if user.role == User.Role.QMS:
+
+            allowed_fields = {
+                "status",
+                "verification_remarks",
+            }
+
+            submitted_fields = set(request.data.keys())
+
+            invalid_fields = submitted_fields - allowed_fields
+
+            if invalid_fields:
+                return Response(
+                    {
+                        "detail": (
+                            "QMS can only update "
+                            "status and verification_remarks."
+                        ),
+                        "invalid_fields": list(invalid_fields)
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            verification_status = request.data.get("status")
+
+            allowed_statuses = {
+                AuditNC.Status.ACCEPTED,
+                AuditNC.Status.REWORK_REQUIRED,
+            }
+
+            if verification_status not in allowed_statuses:
+                return Response(
+                    {
+                        "detail": (
+                            "Status must be ACCEPTED "
+                            "or REWORK_REQUIRED."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Actions must be submitted before verification
+            if (
+                not nc.correction.strip()
+                and not nc.corrective_action.strip()
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "Correction or corrective action "
+                            "must be submitted before verification."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            nc.status = verification_status
+            nc.verification_remarks = request.data.get(
+                "verification_remarks",
+                ""
+            )
+            nc.verified_by = user
+            nc.verified_at = timezone.now()
+
+            nc.save(
+                update_fields=[
+                    "status",
+                    "verification_remarks",
+                    "verified_by",
+                    "verified_at",
+                    "updated_at",
+                ]
+            )
+
+            return Response(
+                self.get_serializer(nc).data,
+                status=status.HTTP_200_OK
+            )
+
+        # -------------------------------------------------
+        # 3. CHECK ASSIGNMENT / PROJECT MEMBERSHIP
+        # -------------------------------------------------
+
         is_auditor = AuditorAssignment.objects.filter(
             audit=nc.audit_checklist_item.audit_checklist.audit,
             auditor=user
         ).exists()
 
-        # Check whether user belongs to audited project
         is_project_member = ProjectMember.objects.filter(
             project=nc.audit_checklist_item.audit_checklist.audit.project,
             employee=user
         ).exists()
 
-        # Auditor fields
+        # -------------------------------------------------
+        # 4. ALLOWED FIELDS
+        # -------------------------------------------------
+
         auditor_fields = {
             "finding",
             "risk_action",
         }
 
-        # Audited team fields
         team_fields = {
             "correction",
             "corrective_action",
@@ -716,7 +961,10 @@ class AuditNCViewSet(
 
         submitted_fields = set(request.data.keys())
 
-        # Auditor trying to update
+        # -------------------------------------------------
+        # 5. AUDITOR
+        # -------------------------------------------------
+
         if is_auditor:
 
             invalid_fields = submitted_fields - auditor_fields
@@ -733,7 +981,10 @@ class AuditNCViewSet(
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Audited team trying to update
+        # -------------------------------------------------
+        # 6. AUDITED PROJECT MEMBER
+        # -------------------------------------------------
+
         elif is_project_member:
 
             invalid_fields = submitted_fields - team_fields
@@ -754,10 +1005,17 @@ class AuditNCViewSet(
         else:
             return Response(
                 {
-                    "detail": "You do not have permission to update this NC."
+                    "detail": (
+                        "You do not have permission "
+                        "to update this NC."
+                    )
                 },
                 status=status.HTTP_403_FORBIDDEN
             )
+
+        # -------------------------------------------------
+        # 7. SAVE AUDITOR / TEAM CHANGES
+        # -------------------------------------------------
 
         serializer = self.get_serializer(
             nc,

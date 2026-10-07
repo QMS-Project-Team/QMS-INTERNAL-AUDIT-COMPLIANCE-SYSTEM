@@ -6,7 +6,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from accounts.permissions import IsDirector, IsQMS, IsDirectorOrQMS
 from accounts.models import User
-
+from audits.models import Audit,AuditorAssignment
 from .models import Project,ProjectMember
 from .serializers import ProjectSerializer,ProjectMemberSerializer
 
@@ -145,8 +145,19 @@ class EligibleAuditorListView(APIView):
 
     def get(self, request, project_id):
 
+
+        active_auditor_ids = AuditorAssignment.objects.filter(
+            audit__status__in=[
+                Audit.Status.PENDING_ASSIGNMENT,
+                Audit.Status.ASSIGNED,
+                Audit.Status.IN_PROGRESS,
+                Audit.Status.PENDING_CLOSURE,
+            ]
+        ).values_list("auditor_id", flat=True)
+
+
         eligible_pocs = ProjectMember.objects.filter(
-            employee__role="EMPLOYEE",
+            employee__role=User.Role.EMPLOYEE,
             poc_type__in=[
                 ProjectMember.POCType.PRIMARY,
                 ProjectMember.POCType.SECONDARY,
@@ -154,6 +165,8 @@ class EligibleAuditorListView(APIView):
             ]
         ).exclude(
             project_id=project_id
+        ).exclude(
+            employee_id__in=active_auditor_ids
         ).select_related(
             "employee",
             "project",

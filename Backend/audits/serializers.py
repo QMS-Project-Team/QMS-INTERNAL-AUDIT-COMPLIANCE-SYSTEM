@@ -285,6 +285,22 @@ class AuditorAssignmentSerializer(serializers.ModelSerializer):
                 f"This audit already has a {assignment_type} auditor."
             )
 
+        active_assignment = AuditorAssignment.objects.filter(
+            auditor=auditor
+        ).exclude(
+            audit__status=Audit.Status.CLOSED
+        ).exists()
+
+        if active_assignment:
+            raise serializers.ValidationError(
+                {
+                    "auditor": (
+                        "This employee is already assigned as an auditor "
+                        "to an active audit."
+                    )
+                }
+            )
+
         return attrs
 
 

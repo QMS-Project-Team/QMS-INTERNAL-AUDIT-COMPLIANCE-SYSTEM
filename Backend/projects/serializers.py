@@ -71,34 +71,28 @@ class ProjectMemberSerializer(serializers.ModelSerializer):
         return employee
     
     def validate_poc_type(self, poc_type):
+        if not self.instance:
+            return poc_type
 
         project = self.instance.project
 
         if poc_type == ProjectMember.POCType.PRIMARY:
-            exists = ProjectMember.objects.filter(
+            if ProjectMember.objects.filter(
                 project=project,
                 poc_type=ProjectMember.POCType.PRIMARY
-            ).exclude(
-                id=self.instance.id
-            ).exists()
-
-            if exists:
+            ).exclude(id=self.instance.id).exists():
                 raise serializers.ValidationError(
                     "This project already has a Primary POC."
                 )
 
         if poc_type == ProjectMember.POCType.SECONDARY:
-            exists = ProjectMember.objects.filter(
+            if ProjectMember.objects.filter(
                 project=project,
                 poc_type=ProjectMember.POCType.SECONDARY
-            ).exclude(
-                id=self.instance.id
-            ).exists()
-
-            if exists:
+            ).exclude(id=self.instance.id).exists():
                 raise serializers.ValidationError(
                     "This project already has a Secondary POC."
                 )
 
         return poc_type
-    
+        
