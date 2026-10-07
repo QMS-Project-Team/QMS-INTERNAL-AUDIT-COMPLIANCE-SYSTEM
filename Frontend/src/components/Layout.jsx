@@ -393,7 +393,7 @@ export default function Layout() {
             <div className="main">
                 <header className="topbar">
                     <span className="topbar-title">
-                        Internal Audit &amp; Compliance System
+                        QMS · Internal Audit &amp; Compliance System
                     </span>
 
                     <div className="topbar-actions">
@@ -412,4 +412,4 @@ export default function Layout() {
             </div>
         </div>
     );
-}
+} 
