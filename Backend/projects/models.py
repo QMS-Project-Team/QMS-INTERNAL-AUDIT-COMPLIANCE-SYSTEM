@@ -95,6 +95,17 @@ class ProjectMember(models.Model):
                 fields=["employee"],
                 name="unique_employee_project_membership"
             ),
+            models.UniqueConstraint(
+            fields=["project"],
+            condition=models.Q(poc_type="PRIMARY"),
+            name="unique_primary_poc_per_project"
+            ),
+
+            models.UniqueConstraint(
+                fields=["project"],
+                condition=models.Q(poc_type="SECONDARY"),
+                name="unique_secondary_poc_per_project"
+            ),
         ]
 
     def __str__(self):

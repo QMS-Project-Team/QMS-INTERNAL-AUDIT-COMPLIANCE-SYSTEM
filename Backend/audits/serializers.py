@@ -124,6 +124,24 @@ class AuditSerializer(serializers.ModelSerializer):
             }
         )
 
+        # Planned end date must be after planned start date
+        start_date = attrs.get(
+            "planned_start_date",
+            getattr(self.instance, "planned_start_date", None)
+        )
+
+        end_date = attrs.get(
+            "planned_end_date",
+            getattr(self.instance, "planned_end_date", None)
+        )
+
+        if start_date and end_date and end_date <= start_date:
+            raise serializers.ValidationError({
+                "planned_end_date": (
+                    "Planned end date must be after planned start date."
+                )
+            })
+
         return attrs
 
     def get_progress(self, audit):
@@ -351,6 +369,9 @@ class AuditScheduleSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    t15_date = serializers.DateTimeField(read_only=True)
+    t7_date = serializers.DateTimeField(read_only=True)
+
     class Meta:
         model = AuditSchedule
         fields = [
@@ -359,6 +380,8 @@ class AuditScheduleSerializer(serializers.ModelSerializer):
             "audit_code",
             "scheduled_start",
             "scheduled_end",
+            "t15_date",
+            "t7_date",
             "status",
             "scheduled_by",
             "scheduled_by_name",
@@ -370,6 +393,8 @@ class AuditScheduleSerializer(serializers.ModelSerializer):
             "id",
             "audit",
             "audit_code",
+            "t15_date",
+            "t7_date",
             "status",
             "scheduled_by",
             "scheduled_by_name",

@@ -1,7 +1,8 @@
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
 from frameworks.models import Checklist,ChecklistItem
-from .models import Audit, AuditChecklist, AuditChecklistItem
+from .models import AuditChecklist, AuditChecklistItem
 
 
 @transaction.atomic
@@ -15,7 +16,7 @@ def create_audit_checklist(audit):
     ).first()
 
     if not checklist:
-        raise ValueError(
+        raise ValidationError(
             "No active checklist exists for this framework and department."
         )
 

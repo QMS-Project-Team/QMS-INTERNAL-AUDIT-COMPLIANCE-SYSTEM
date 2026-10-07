@@ -354,6 +354,7 @@ class AuditChecklistItemViewSet(
             "checklist_item"
         )
 
+    @transaction.atomic
     def partial_update(self, request, *args, **kwargs):
 
         audit = get_object_or_404(
@@ -539,6 +540,7 @@ class AuditorAssignmentViewSet(ListModelMixin,
 
         return context
 
+    @transaction.atomic
     def perform_create(self, serializer):
 
         audit_id = self.kwargs["audit_id"]
@@ -554,6 +556,25 @@ class AuditorAssignmentViewSet(ListModelMixin,
         if audit.status != Audit.Status.PENDING_ASSIGNMENT:
             raise serializers.ValidationError(
                 "Auditors can only be assigned while the audit is pending assignment."
+            )
+
+        auditor_id = serializer.validated_data["auditor"].id
+
+        auditor = User.objects.select_for_update().get(
+            id=auditor_id
+        )
+
+        # Check whether this auditor is already assigned
+        # to another active audit.
+        active_assignment = AuditorAssignment.objects.filter(
+            auditor=auditor
+        ).exclude(
+            audit__status=Audit.Status.CLOSED
+        ).exists()
+
+        if active_assignment:
+            raise serializers.ValidationError(
+                "This employee is already assigned to an active audit."
             )
 
         assignment=serializer.save(
@@ -664,10 +685,33 @@ class AuditScheduleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         audit_id = self.kwargs.get("audit_id")
+        user = self.request.user
 
-        return AuditSchedule.objects.filter(
+        queryset = AuditSchedule.objects.filter(
             audit_id=audit_id
+        ).select_related(
+            "audit",
+            "audit__project",
+            "audit__department",
+            "audit__framework",
+            "audit__created_by",
+            "scheduled_by",
         )
+
+        if user.role == User.Role.QMS:
+            return queryset
+
+        if user.role == User.Role.DIRECTOR:
+            return queryset.filter(
+                audit__project__project_owner=user
+            )
+
+        if user.role == User.Role.EMPLOYEE:
+            return queryset.filter(
+                audit__auditor_assignments__auditor=user
+            ).distinct()
+
+        return queryset.none()
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -699,15 +743,59 @@ class AuditScheduleViewSet(viewsets.ModelViewSet):
             status=AuditSchedule.Status.SCHEDULED
         )
 
-class AuditConfirmationViewSet(viewsets.ModelViewSet):
+    def perform_update(self, serializer):
+        schedule = self.get_object()
+
+        if schedule.status == AuditSchedule.Status.CONFIRMED:
+            raise serializers.ValidationError(
+                "A confirmed audit schedule cannot be modified."
+            )
+
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        return Response(
+            {
+                "detail": "Audit schedules cannot be deleted."
+            },
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+class AuditConfirmationViewSet(mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet):
     serializer_class = AuditConfirmationSerializer
 
     def get_queryset(self):
         audit_id = self.kwargs.get("audit_id")
+        user = self.request.user
 
-        return AuditConfirmation.objects.filter(
+        queryset = AuditConfirmation.objects.filter(
             schedule__audit_id=audit_id
+        ).select_related(
+            "schedule",
+            "schedule__audit",
+            "schedule__audit__project",
+            "schedule__audit__department",
+            "schedule__audit__framework",
+            "confirmed_by",
         )
+
+        if user.role == User.Role.QMS:
+            return queryset
+
+        if user.role == User.Role.DIRECTOR:
+            return queryset.filter(
+                schedule__audit__project__project_owner=user
+            )
+
+        if user.role == User.Role.EMPLOYEE:
+            return queryset.filter(
+                schedule__audit__auditor_assignments__auditor=user
+            ).distinct()
+
+        return queryset.none()
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:
@@ -717,6 +805,7 @@ class AuditConfirmationViewSet(viewsets.ModelViewSet):
 
         return [permission() for permission in permission_classes]
 
+    @transaction.atomic
     def perform_create(self, serializer):
         audit = get_object_or_404(
             Audit,
