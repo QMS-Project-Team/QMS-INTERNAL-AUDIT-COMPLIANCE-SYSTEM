@@ -251,6 +251,80 @@ class AuditFlowTests(TestCase):
         self.assertEqual(checklist.status_code, 200, checklist.data)
         self.assertEqual(len(checklist.data["items"]), 2)
 
+    def start_audit(self):
+        """Create, assign, orient, schedule, confirm and start an audit."""
+        audit_id = self.create_audit()
+        qms = self.as_user(self.qms)
+        url = f"/api/audits/{audit_id}"
+        qms.post(f"{url}/assignments/", {"auditor": self.auditor1.id, "assignment_type": "PRIMARY"})
+        qms.post(f"{url}/assignments/", {"auditor": self.auditor2.id, "assignment_type": "SECONDARY"})
+        qms.post(f"{url}/schedule/", {
+            "scheduled_start": "2026-10-10T09:00:00Z",
+            "scheduled_end": "2026-10-10T17:00:00Z",
+        })
+        for kind in ("COMBINED", "INDIVIDUAL"):
+            qms.post(f"{url}/confirmations/", {"confirmation_type": kind})
+
+        auditor = self.as_user(self.auditor1)
+        orientation_id = auditor.get(f"{url}/").data["my_assignment"]["orientation_id"]
+        auditor.post(f"/api/orientations/{orientation_id}/complete/")
+        self.assertEqual(auditor.post(f"{url}/start/").status_code, 200)
+        return audit_id
+
+    def test_nc_lifecycle_to_closure(self):
+        audit_id = self.start_audit()
+        url = f"/api/audits/{audit_id}"
+        team_member = self.qa_employee  # member of the audited project
+
+        # The audited team can see its own project's audit (not as an auditor).
+        team_view = self.as_user(team_member).get("/api/audits/").data
+        self.assertEqual([a["id"] for a in team_view], [audit_id])
+        self.assertIsNone(team_view[0]["my_assignment"])
+
+        # Auditor evaluates: item 1 compliant, item 2 non-compliant (opens an NC).
+        auditor = self.as_user(self.auditor1)
+        items = auditor.get(f"{url}/checklist/").data["items"]
+        first, second = sorted(items, key=lambda i: i["order"])
+        self.assertEqual(auditor.patch(f"{url}/checklist-items/{first['id']}/", {"result": "COMPLIANT"}, format="json").status_code, 200)
+        self.assertEqual(auditor.patch(f"{url}/checklist-items/{second['id']}/", {"result": "NON_COMPLIANT", "remarks": "No record"}, format="json").status_code, 200)
+
+        # NCs are listable by the auditor, the audited team and QMS, but not the director.
+        ncs = auditor.get(f"{url}/ncs/").data
+        self.assertEqual(len(ncs), 1)
+        nc_id = ncs[0]["id"]
+        self.assertEqual(ncs[0]["checklist_item_id"], second["id"])
+        self.assertEqual(len(self.as_user(team_member).get(f"{url}/ncs/").data), 1)
+        self.assertEqual(len(self.as_user(self.qms).get(f"{url}/ncs/").data), 1)
+        self.assertEqual(self.as_user(self.director).get(f"{url}/ncs/").data, [])
+
+        progress = self.as_user(self.qms).get(f"{url}/").data["progress"]
+        self.assertEqual(
+            {k: progress["checklist"][k] for k in ("compliant", "non_compliant", "pending")},
+            {"compliant": 1, "non_compliant": 1, "pending": 0},
+        )
+        self.assertEqual(progress["ncs"]["awaiting_action"], 1)
+
+        # Auditor: finding + risk action. Team: corrective actions.
+        auditor = self.as_user(self.auditor1)
+        self.assertEqual(auditor.patch(f"{url}/ncs/{nc_id}/", {"finding": "Missing record", "risk_action": "Monitor"}, format="json").status_code, 200)
+        team = self.as_user(team_member)
+        self.assertEqual(team.patch(f"{url}/ncs/{nc_id}/", {"correction": "Recorded", "corrective_action": "Checklist step"}, format="json").status_code, 200)
+        self.assertEqual(self.as_user(self.qms).get(f"{url}/").data["progress"]["ncs"]["awaiting_verification"], 1)
+
+        # QMS: rework, then accept.
+        qms = self.as_user(self.qms)
+        self.assertEqual(qms.patch(f"{url}/ncs/{nc_id}/", {"status": "REWORK_REQUIRED", "verification_remarks": "Add evidence"}, format="json").status_code, 200)
+        self.assertEqual(qms.get(f"{url}/").data["progress"]["ncs"]["rework_required"], 1)
+        self.assertEqual(qms.post(f"{url}/close/").status_code, 400)
+        self.assertEqual(qms.patch(f"{url}/ncs/{nc_id}/", {"status": "ACCEPTED"}, format="json").status_code, 200)
+
+        # Auditor re-checks the item, then QMS closes.
+        auditor = self.as_user(self.auditor1)
+        self.assertEqual(auditor.patch(f"{url}/checklist-items/{second['id']}/", {"result": "COMPLIANT"}, format="json").status_code, 200)
+        closed = self.as_user(self.qms).post(f"{url}/close/")
+        self.assertEqual(closed.status_code, 200, closed.data)
+        self.assertEqual(Audit.objects.get(id=audit_id).status, Audit.Status.CLOSED)
+
     def test_deleting_project_in_use_returns_409(self):
         self.create_audit()
 

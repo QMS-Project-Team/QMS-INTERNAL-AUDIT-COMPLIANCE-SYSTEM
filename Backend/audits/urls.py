@@ -83,6 +83,12 @@ urlpatterns = [
     ),
 
     path(
+        "audits/<int:audit_id>/ncs/",
+        AuditNCViewSet.as_view({
+            "get": "list",
+        }),
+    ),
+    path(
     "audits/<int:audit_id>/ncs/<int:pk>/",
         AuditNCViewSet.as_view({
             "get": "retrieve",

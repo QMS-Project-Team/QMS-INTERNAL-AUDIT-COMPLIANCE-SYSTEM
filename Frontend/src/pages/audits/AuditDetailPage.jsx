@@ -1,25 +1,18 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
-    assignmentsApi, auditsApi, authApi, confirmationsApi, loadAuditLookups, nominationsApi, orientationsApi, scheduleApi,
+    assignmentsApi, auditsApi, confirmationsApi, ncsApi, orientationsApi, pocsApi, scheduleApi,
 } from "../../api/endpoints";
 import { errorMessage } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import useLoad from "../../hooks/useLoad";
 import { useToast } from "../../components/Toast";
-import {
-    Badge, ConfirmDialog, EmptyState, ErrorBox, Field, Loading, PageHeader,
-} from "../../components/ui";
+import ChecklistExecution from "../../components/ChecklistExecution";
+import NcCard from "../../components/NcCard";
+import { Badge, EmptyState, ErrorBox, Field, Loading, PageHeader } from "../../components/ui";
 import { formatDate, formatDateTime } from "../../utils/format";
-import { AUDIT_STATUS_LABELS, ROLES, departmentLabel, isManagement } from "../../constants";
-import { isEditableAudit } from "../../permissions";
-import { AuditForm } from "./AuditsPage";
-import AuditorActions from "../../components/AuditorActions";
-
-const STATUS_ORDER = ["DRAFT", "PENDING_ASSIGNMENT", "ASSIGNED", "IN_PROGRESS", "PENDING_CLOSURE", "CLOSED"];
-const reached = (audit, status) => STATUS_ORDER.indexOf(audit.status) >= STATUS_ORDER.indexOf(status);
-
-const fullName = (u) => (u ? (u.first_name ? `${u.first_name} ${u.last_name} (${u.username})` : u.username) : "—");
+import { AUDIT_STATUS_LABELS, ROLES, departmentLabel, pocLabel } from "../../constants";
+import { auditStage, daysUntil, relativeDays, stageMeta, startBlocker } from "../../workflow";
 
 // <input type="datetime-local"> works in local time without a zone.
 const toLocalInput = (iso) => {
@@ -29,7 +22,7 @@ const toLocalInput = (iso) => {
 };
 const fromLocalInput = (value) => new Date(value).toISOString();
 
-/** Runs an async action with a busy flag and routes its outcome to a toast. */
+/** Runs an async action with a busy flag, reports the outcome as a toast and reloads. */
 function useAction(reload) {
     const notify = useToast();
     const [busy, setBusy] = useState("");
@@ -37,7 +30,7 @@ function useAction(reload) {
         setBusy(key);
         try {
             const result = await fn();
-            notify(typeof success === "function" ? success(result) : success);
+            if (success) notify(typeof success === "function" ? success(result) : success);
             await reload();
             return true;
         } catch (err) {
@@ -50,9 +43,9 @@ function useAction(reload) {
     return [busy, run];
 }
 
-function Section({ step, title, owner, state, children, aside }) {
+function Section({ id, step, title, owner, state, children, aside }) {
     return (
-        <section className={`card step-card step-${state}`}>
+        <section id={id} className={`card step-card step-${state}`}>
             <div className="card-head">
                 <div className="step-title">
                     <span className="step-num">{state === "done" ? "✓" : step}</span>
@@ -79,237 +72,108 @@ function Stepper({ steps }) {
     );
 }
 
-function NominationsSection({ audit, nominations, auditors, canManage, run, busy }) {
-    const [auditor, setAuditor] = useState("");
-    const [removing, setRemoving] = useState(null);
-    const nominatedIds = new Set(nominations.map((n) => n.auditor));
-    const eligible = auditors.filter((a) => a.department !== audit.department && !nominatedIds.has(a.id));
-    const byId = Object.fromEntries(auditors.map((a) => [a.id, a]));
-    const editable = canManage && isEditableAudit(audit);
-
-    const nominate = async (e) => {
-        e.preventDefault();
-        const ok = await run("nominate", () => nominationsApi(audit.id).create({ auditor: Number(auditor) }), "Auditor nominated.");
-        if (ok) setAuditor("");
-    };
-
-    return (
-        <>
-            {nominations.length === 0 ? (
-                <EmptyState title="No auditors nominated yet"
-                    text={editable ? "Nominate at least two auditors so QMS can assign a primary and a secondary." : "Waiting for the Director / Manager."} />
-            ) : (
-                <div className="table-wrap">
-                    <table className="table">
-                        <thead>
-                            <tr><th>Auditor</th><th>Department</th><th>Nominated by</th><th>When</th>{editable && <th />}</tr>
-                        </thead>
-                        <tbody>
-                            {nominations.map((n) => (
-                                <tr key={n.id}>
-                                    <td>{fullName(byId[n.auditor]) || n.auditor_name}</td>
-                                    <td>{departmentLabel(byId[n.auditor]?.department)}</td>
-                                    <td>{n.nominated_by_name}</td>
-                                    <td>{formatDateTime(n.nominated_at)}</td>
-                                    {editable && (
-                                        <td className="right">
-                                            <button className="btn btn-sm btn-ghost danger" onClick={() => setRemoving(n)}>Remove</button>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {editable && (
-                <form className="inline-form" onSubmit={nominate}>
-                    <select className="input" value={auditor} onChange={(e) => setAuditor(e.target.value)} required>
-                        <option value="">{eligible.length ? "Select an auditor…" : "No eligible auditors left"}</option>
-                        {eligible.map((a) => (
-                            <option key={a.id} value={a.id}>{fullName(a)} · {departmentLabel(a.department)}</option>
-                        ))}
-                    </select>
-                    <button className="btn btn-primary" disabled={!auditor || busy === "nominate"}>
-                        {busy === "nominate" ? "Nominating…" : "Nominate"}
-                    </button>
-                    <span className="field-hint">Auditors from {departmentLabel(audit.department)} are excluded: no one audits their own department.</span>
-                </form>
-            )}
-
-            {removing && (
-                <ConfirmDialog
-                    title="Remove nomination"
-                    message={`Remove ${removing.auditor_name} from the nominated auditors?`}
-                    confirmLabel="Remove"
-                    onConfirm={() => nominationsApi(audit.id).remove(removing.id).then(() => run("noop", async () => {}, "Nomination removed."))}
-                    onClose={() => setRemoving(null)}
-                />
-            )}
-        </>
-    );
-}
-
-function AssignmentsSection({ audit, nominations, assignments, orientations, auditors, isQMS, run, busy }) {
-    const [auditor, setAuditor] = useState("");
-    // Default to whichever type is still missing so the common path is two clicks.
-    const [type, setType] = useState(() =>
-        assignments.some((a) => a.assignment_type === "PRIMARY") ? "SECONDARY" : "PRIMARY"
-    );
-    const [removing, setRemoving] = useState(null);
-    const assignedIds = new Set(assignments.map((a) => a.auditor));
-    const candidates = nominations.filter((n) => !assignedIds.has(n.auditor));
-    const byId = Object.fromEntries(auditors.map((a) => [a.id, a]));
-    const orientationFor = (assignmentId) => orientations?.find((o) => o.assignment === assignmentId);
-    const pending = audit.status === "PENDING_ASSIGNMENT";
-    const hasPrimary = assignments.some((a) => a.assignment_type === "PRIMARY");
-    const hasSecondary = assignments.some((a) => a.assignment_type === "SECONDARY");
+function AssignmentSection({ audit, eligible, isQMS, run, busy }) {
+    const auditors = audit.progress?.auditors || [];
+    const taken = new Set(auditors.map((a) => a.assignment_type));
+    const missingTypes = ["PRIMARY", "SECONDARY"].filter((t) => !taken.has(t));
+    const [type, setType] = useState(missingTypes[0] || "PRIMARY");
+    const [employee, setEmployee] = useState("");
+    const canAssign = isQMS && audit.status === "PENDING_ASSIGNMENT";
 
     const assign = async (e) => {
         e.preventDefault();
         const ok = await run(
             "assign",
-            () => assignmentsApi(audit.id).create({ auditor: Number(auditor), assignment_type: type }),
-            "Auditor assigned. An orientation record was created for them."
+            () => assignmentsApi(audit.id).create({ auditor: Number(employee), assignment_type: type }),
+            "Auditor assigned. An orientation was created for them."
         );
         if (ok) {
-            setAuditor("");
-            if (type === "PRIMARY" && !hasSecondary) setType("SECONDARY");
+            setEmployee("");
+            setType(missingTypes.find((t) => t !== type) || type);
         }
     };
 
     return (
         <>
-            {assignments.length === 0 ? (
-                <EmptyState title="No auditors assigned yet"
-                    text={isQMS ? "Assign at least one PRIMARY and one SECONDARY auditor from the nominated list." : "Waiting for QMS."} />
+            {auditors.length === 0 ? (
+                <p className="muted">{isQMS ? "Assign a Primary and a Secondary auditor from the eligible POCs below." : "Waiting for QMS to assign auditors."}</p>
             ) : (
-                <div className="table-wrap">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Auditor</th><th>Role in audit</th><th>Assigned by</th>
-                                {orientations && <th>Orientation</th>}
-                                {isQMS && pending && <th />}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {assignments.map((a) => (
-                                <tr key={a.id}>
-                                    <td>{fullName(byId[a.auditor]) || a.auditor_name}</td>
-                                    <td><Badge value={a.assignment_type} /></td>
-                                    <td>{a.assigned_by_name} <span className="muted">· {formatDate(a.assigned_at)}</span></td>
-                                    {orientations && <td><Badge value={orientationFor(a.id)?.status || "PENDING"} /></td>}
-                                    {isQMS && pending && (
-                                        <td className="right">
-                                            <button className="btn btn-sm btn-ghost danger" onClick={() => setRemoving(a)}>Remove</button>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <ul className="plain-list">
+                    {auditors.map((a) => (
+                        <li key={a.assignment_id}>
+                            <strong>{a.auditor_name}</strong>
+                            <Badge value={a.assignment_type} label={`${a.assignment_type.toLowerCase()} auditor`} />
+                        </li>
+                    ))}
+                </ul>
             )}
 
-            {isQMS && pending && (
+            {canAssign && (
                 <>
                     <form className="inline-form" onSubmit={assign}>
-                        <select className="input" value={auditor} onChange={(e) => setAuditor(e.target.value)} required>
-                            <option value="">{candidates.length ? "Select a nominated auditor…" : "All nominees are assigned"}</option>
-                            {candidates.map((n) => <option key={n.id} value={n.auditor}>{fullName(byId[n.auditor]) || n.auditor_name}</option>)}
+                        <select className="input" value={employee} onChange={(e) => setEmployee(e.target.value)} required>
+                            <option value="">{eligible.length ? "Select an eligible POC…" : "No eligible POCs available"}</option>
+                            {eligible.map((p) => (
+                                <option key={p.id} value={p.employee}>
+                                    {p.employee_name} · {pocLabel(p.poc_type)} of {p.project_code} ({p.department})
+                                </option>
+                            ))}
                         </select>
                         <select className="input input-narrow" value={type} onChange={(e) => setType(e.target.value)}>
-                            <option value="PRIMARY">Primary</option>
-                            <option value="SECONDARY">Secondary</option>
+                            {missingTypes.map((t) => <option key={t} value={t}>{t === "PRIMARY" ? "Primary" : "Secondary"}</option>)}
                         </select>
-                        <button className="btn btn-primary" disabled={!auditor || busy === "assign"}>
+                        <button className="btn btn-primary" disabled={!employee || busy === "assign"}>
                             {busy === "assign" ? "Assigning…" : "Assign"}
                         </button>
+                        <span className="field-hint">
+                            Eligible: POCs of other projects who aren't on another active audit. The audit becomes Assigned once both roles are filled.
+                        </span>
                     </form>
-
-                    <div className="action-row">
-                        <div className="checks">
-                            <span className={hasPrimary ? "ok" : "todo"}>{hasPrimary ? "✓" : "○"} Primary auditor</span>
-                            <span className={hasSecondary ? "ok" : "todo"}>{hasSecondary ? "✓" : "○"} Secondary auditor</span>
-                        </div>
-                        <button
-                            className="btn btn-success"
-                            disabled={!hasPrimary || !hasSecondary || busy === "complete"}
-                            onClick={() => run("complete", () => auditsApi.completeAssignment(audit.id),
-                                (r) => `Assignment completed. Checklist "${r.checklist_name}" attached to the audit.`)}
-                        >
-                            {busy === "complete" ? "Completing…" : "Complete assignment"}
-                        </button>
-                    </div>
-                    <p className="field-hint">
-                        Completing assignment attaches the active checklist for this audit's framework and department, and sets the audit to Assigned.
-                    </p>
                 </>
-            )}
-
-            {removing && (
-                <ConfirmDialog
-                    title="Remove assignment"
-                    message={`Remove ${removing.auditor_name} (${removing.assignment_type.toLowerCase()}) from this audit? Their orientation record is removed too.`}
-                    confirmLabel="Remove"
-                    onConfirm={() => assignmentsApi(audit.id).remove(removing.id).then(() => run("noop", async () => {}, "Assignment removed."))}
-                    onClose={() => setRemoving(null)}
-                />
             )}
         </>
     );
 }
 
-function OrientationSection({ audit, orientations: qmsOrientations, isQMS, run, busy, onChanged }) {
-    // QMS gets full orientation records; everyone else uses the audit's progress summary.
-    const orientations = qmsOrientations || (audit.progress?.auditors || []).map((a) => ({
-        id: a.assignment_id,
-        auditor_name: a.auditor_name,
-        status: a.orientation_status || "PENDING",
-        completed_at: null,
-    }));
-    const done = orientations.filter((o) => o.status === "COMPLETED").length;
+function OrientationSection({ audit, run, busy }) {
+    const auditors = audit.progress?.auditors || [];
+    const done = auditors.filter((a) => a.orientation_status === "COMPLETED").length;
+    const mine = audit.my_assignment;
+
+    if (!auditors.length) return <p className="muted">Each assigned auditor gets an orientation to complete.</p>;
 
     return (
         <>
             <div className="progress-line">
-                <div className="progress"><span style={{ width: `${orientations.length ? (done / orientations.length) * 100 : 0}%` }} /></div>
-                <span>{done} of {orientations.length} auditors completed</span>
+                <div className="progress"><span style={{ width: `${(done / auditors.length) * 100}%` }} /></div>
+                <span>{done} of {auditors.length} auditors completed</span>
             </div>
             <ul className="plain-list">
-                {orientations.map((o) => (
-                    <li key={o.id}>
-                        <span>{o.auditor_name}</span>
-                        <span>
-                            <Badge value={o.status} />
-                            {o.completed_at && <span className="muted"> {formatDateTime(o.completed_at)}</span>}
-                        </span>
+                {auditors.map((a) => (
+                    <li key={a.assignment_id}>
+                        <span>{a.auditor_name} <span className="muted">· {a.assignment_type.toLowerCase()}</span></span>
+                        <Badge value={a.orientation_status || "PENDING"} />
                     </li>
                 ))}
             </ul>
-            {audit.my_assignment?.orientation_status === "PENDING" && (
-                <AuditorActions audit={audit} onChanged={onChanged} />
-            )}
-            {isQMS && audit.status === "ASSIGNED" && (
-                <button className="btn btn-ghost" disabled={busy === "orientation"}
-                    onClick={() => run("orientation", () => auditsApi.completeOrientation(audit.id), (r) => r.detail)}>
-                    {busy === "orientation" ? "Checking…" : "Verify all orientations are complete"}
+            {mine?.orientation_status === "PENDING" && (
+                <button className="btn btn-primary" disabled={busy === "orientation"}
+                    onClick={() => run("orientation", () => orientationsApi.complete(mine.orientation_id), "Orientation completed.")}>
+                    {busy === "orientation" ? "Saving…" : "Mark my orientation complete"}
                 </button>
             )}
         </>
     );
 }
 
-function ScheduleSection({ audit, schedule, confirmations, isQMS, run, busy }) {
+function ScheduleSection({ audit, schedule, isQMS, run, busy }) {
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState(() => ({
         start: schedule ? toLocalInput(schedule.scheduled_start) : `${audit.planned_start_date}T09:00`,
         end: schedule ? toLocalInput(schedule.scheduled_end) : `${audit.planned_end_date}T17:00`,
     }));
     const canCreate = isQMS && !schedule && audit.status === "ASSIGNED";
-    const canEdit = isQMS && schedule && confirmations.length === 0;
+    const canEdit = isQMS && schedule && schedule.status !== "CONFIRMED";
 
     const submit = async (e) => {
         e.preventDefault();
@@ -328,6 +192,8 @@ function ScheduleSection({ audit, schedule, confirmations, isQMS, run, busy }) {
                 <dl className="details">
                     <dt>Starts</dt><dd>{formatDateTime(schedule.scheduled_start)}</dd>
                     <dt>Ends</dt><dd>{formatDateTime(schedule.scheduled_end)}</dd>
+                    <dt>T-15</dt><dd>{formatDate(schedule.t15_date)} <span className="muted">· combined confirmation</span></dd>
+                    <dt>T-7</dt><dd>{formatDate(schedule.t7_date)} <span className="muted">· individual confirmation</span></dd>
                     <dt>Status</dt><dd><Badge value={schedule.status} /></dd>
                     <dt>Scheduled by</dt><dd>{schedule.scheduled_by_name}</dd>
                 </dl>
@@ -336,8 +202,16 @@ function ScheduleSection({ audit, schedule, confirmations, isQMS, run, busy }) {
         );
     }
 
-    if (!canCreate && !editing) {
-        return <p className="muted">{audit.status === "ASSIGNED" ? "Waiting for QMS to schedule the audit." : "Available once auditor assignment is complete."}</p>;
+    if (!schedule && !canCreate) {
+        return (
+            <p className="muted">
+                {audit.status === "PENDING_ASSIGNMENT"
+                    ? "Available once both auditors are assigned."
+                    : audit.progress?.schedule
+                        ? `Scheduled for ${formatDateTime(audit.progress.schedule.scheduled_start)}.`
+                        : "Waiting for QMS to schedule the audit."}
+            </p>
+        );
     }
 
     return (
@@ -354,29 +228,36 @@ function ScheduleSection({ audit, schedule, confirmations, isQMS, run, busy }) {
                     {busy === "schedule" ? "Saving…" : schedule ? "Save schedule" : "Schedule audit"}
                 </button>
             </div>
-            <p className="field-hint field-full">Per the audit plan, schedule at T-15 days; this is when the combined confirmation goes out.</p>
+            <p className="field-hint field-full">
+                T-15 and T-7 dates are worked out from the start. The schedule can't be changed once both confirmations are recorded.
+            </p>
         </form>
     );
 }
 
 const CONFIRMATION_TYPES = [
-    { type: "COMBINED", label: "Combined confirmation", hint: "Sent across all departments when scheduled (T-15)." },
-    { type: "INDIVIDUAL", label: "Individual confirmation", hint: "Sent to the audited department about a week before (T-7)." },
+    { type: "COMBINED", label: "Combined confirmation", hint: "Across all departments, when the schedule is published (T-15).", dueKey: "t15_date" },
+    { type: "INDIVIDUAL", label: "Individual confirmation", hint: "To the audited department about a week before (T-7).", dueKey: "t7_date" },
 ];
 
 function ConfirmationsSection({ audit, schedule, confirmations, isQMS, run, busy }) {
-    if (!schedule) return <p className="muted">Available once the audit is scheduled.</p>;
+    const recorded = audit.progress?.confirmations || [];
+    if (!schedule && !audit.progress?.schedule) return <p className="muted">Available once the audit is scheduled.</p>;
 
     return (
         <div className="confirm-grid">
-            {CONFIRMATION_TYPES.map(({ type, label, hint }) => {
+            {CONFIRMATION_TYPES.map(({ type, label, hint, dueKey }) => {
                 const record = confirmations.find((c) => c.confirmation_type === type);
+                const done = record || recorded.includes(type);
                 return (
-                    <div key={type} className={`confirm-tile ${record ? "is-done" : ""}`}>
+                    <div key={type} className={`confirm-tile ${done ? "is-done" : ""}`}>
                         <strong>{label}</strong>
                         <span className="muted">{hint}</span>
+                        {schedule && !done && <span className="muted small">Due {formatDate(schedule[dueKey])}</span>}
                         {record ? (
                             <span className="ok">✓ Recorded by {record.confirmed_by_name} · {formatDateTime(record.confirmed_at)}</span>
+                        ) : done ? (
+                            <span className="ok">✓ Recorded</span>
                         ) : isQMS ? (
                             <button className="btn btn-primary btn-sm" disabled={busy === type}
                                 onClick={() => run(type, () => confirmationsApi(audit.id).create(type), `${label} recorded.`)}>
@@ -392,27 +273,128 @@ function ConfirmationsSection({ audit, schedule, confirmations, isQMS, run, busy
     );
 }
 
+function ResultCounts({ checklist }) {
+    if (!checklist) return null;
+    const { item_count: total, compliant, non_compliant: nonCompliant, pending } = checklist;
+    const pct = (n) => `${total ? (n / total) * 100 : 0}%`;
+    return (
+        <div className="result-counts">
+            <div className="segbar" aria-hidden="true">
+                <span className="seg-ok" style={{ width: pct(compliant) }} />
+                <span className="seg-nc" style={{ width: pct(nonCompliant) }} />
+            </div>
+            <span className="ok">{compliant} compliant</span>
+            <span className="danger-text">{nonCompliant} non-compliant</span>
+            <span className="muted">{pending} pending</span>
+        </div>
+    );
+}
+
+function ExecutionSection({ audit, ncs, isAuditor, run, busy, reload }) {
+    const blocker = startBlocker(audit);
+
+    if (audit.status === "ASSIGNED") {
+        return isAuditor ? (
+            <div className="auditor-actions">
+                <button className="btn btn-success" disabled={Boolean(blocker) || busy === "start"} title={blocker || ""}
+                    onClick={() => run("start", () => auditsApi.start(audit.id), `${audit.audit_code} started. Evaluate the checklist below.`)}>
+                    {busy === "start" ? "Starting…" : "Start audit"}
+                </button>
+                {blocker && <span className="field-hint">{blocker}</span>}
+            </div>
+        ) : (
+            <p className="muted">An assigned auditor starts the audit once orientation is done and the schedule is confirmed.</p>
+        );
+    }
+
+    if (audit.status === "PENDING_ASSIGNMENT") return <p className="muted">Available once auditors are assigned and the schedule is confirmed.</p>;
+
+    return (
+        <>
+            <ResultCounts checklist={audit.progress?.checklist} />
+            {isAuditor && audit.status === "IN_PROGRESS" && (
+                <ChecklistExecution audit={audit} ncs={ncs || []} onChanged={reload} />
+            )}
+        </>
+    );
+}
+
+function NcSection({ audit, ncs, ncRole, reload }) {
+    const counts = audit.progress?.ncs || {};
+    if (!counts.total) {
+        return <p className="muted">{audit.status === "IN_PROGRESS" ? "No non-conformities so far." : "Non-conformities appear here when an item is marked non-compliant."}</p>;
+    }
+    if (!ncs) {
+        return (
+            <p className="muted">
+                {counts.total} NC{counts.total === 1 ? "" : "s"}: {counts.accepted} accepted, {counts.awaiting_verification} awaiting verification,{" "}
+                {counts.awaiting_action + counts.rework_required} awaiting team action.
+            </p>
+        );
+    }
+    return (
+        <>
+            <p className="field-hint">
+                The auditor logs the finding and risk action within 2 days. The audited team then fills the correction, corrective and preventive actions, and QMS verifies. An NC should close within 10 days.
+            </p>
+            <div className="nc-list">
+                {ncs.map((nc) => (
+                    <NcCard key={`${nc.id}-${nc.updated_at}`} auditId={audit.id} nc={nc} role={ncRole} onChanged={reload} />
+                ))}
+            </div>
+        </>
+    );
+}
+
+function CloseSection({ audit, isQMS, run, busy }) {
+    const checklist = audit.progress?.checklist || {};
+    const ncs = audit.progress?.ncs || {};
+    const conditions = [
+        { ok: audit.status === "IN_PROGRESS" || audit.status === "CLOSED", label: "Audit is in progress" },
+        { ok: checklist.item_count > 0 && checklist.compliant === checklist.item_count, label: `All checklist items compliant (${checklist.compliant || 0}/${checklist.item_count || 0})` },
+        { ok: (ncs.total || 0) === (ncs.accepted || 0), label: `All NCs accepted (${ncs.accepted || 0}/${ncs.total || 0})` },
+    ];
+    const ready = conditions.every((c) => c.ok);
+
+    if (audit.status === "CLOSED") return <p className="ok">✓ Audit closed.</p>;
+
+    return (
+        <div className="action-row">
+            <div className="checks checks-col">
+                {conditions.map((c) => (
+                    <span key={c.label} className={c.ok ? "ok" : "todo"}>{c.ok ? "✓" : "○"} {c.label}</span>
+                ))}
+            </div>
+            {isQMS ? (
+                <button className="btn btn-success" disabled={!ready || busy === "close"}
+                    onClick={() => run("close", () => auditsApi.close(audit.id), `${audit.audit_code} closed.`)}>
+                    {busy === "close" ? "Closing…" : "Close audit"}
+                </button>
+            ) : (
+                <span className="muted">QMS closes the audit.</span>
+            )}
+        </div>
+    );
+}
+
 export default function AuditDetailPage() {
     const { id } = useParams();
-    const navigate = useNavigate();
     const { user } = useAuth();
-    const notify = useToast();
     const isQMS = user.role === ROLES.QMS;
-    const canManage = isManagement(user.role);
-    const [dialog, setDialog] = useState(null);
 
-    const { data, loading, error, reload, setData } = useLoad(async () => {
+    const { data, loading, error, reload } = useLoad(async () => {
         const audit = await auditsApi.get(id);
-        const [nominations, assignments, schedule, confirmations, auditors, orientations] = await Promise.all([
-            nominationsApi(id).list(),
-            assignmentsApi(id).list(),
+        const isAuditor = Boolean(audit.my_assignment);
+        const isTeam = user.role === ROLES.EMPLOYEE && !isAuditor;
+        const executing = ["IN_PROGRESS", "PENDING_CLOSURE", "CLOSED"].includes(audit.status);
+        const [schedule, confirmations, eligible, ncs] = await Promise.all([
             scheduleApi(id).get(),
             confirmationsApi(id).list(),
-            authApi.users({ role: ROLES.AUDITOR }),
-            // Only QMS can see every auditor's orientation.
-            isQMS ? orientationsApi.list().then((all) => all.filter((o) => o.audit_code === audit.audit_code)) : null,
+            isQMS && audit.status === "PENDING_ASSIGNMENT" ? pocsApi.eligibleAuditors(audit.project) : [],
+            // QMS, the assigned auditors and the audited team can read NCs.
+            executing && (isQMS || isAuditor || isTeam) ? ncsApi(id).list() : null,
         ]);
-        return { audit, nominations, assignments, schedule, confirmations, auditors, orientations };
+        return { audit, schedule, confirmations, eligible, ncs };
     }, [id]);
 
     const [busy, run] = useAction(reload);
@@ -420,123 +402,93 @@ export default function AuditDetailPage() {
     if (loading && !data) return <Loading />;
     if (!data) return <ErrorBox message={error} onRetry={reload} />;
 
-    const { audit, nominations, assignments, schedule, confirmations, auditors, orientations } = data;
-    const allOriented = orientations ? orientations.length > 0 && orientations.every((o) => o.status === "COMPLETED") : null;
+    const { audit, schedule, confirmations, eligible, ncs } = data;
+    const p = audit.progress || {};
+    const isAuditor = Boolean(audit.my_assignment);
+    const ncRole = isQMS ? "qms" : isAuditor ? "auditor" : user.role === ROLES.EMPLOYEE ? "team" : "viewer";
+    const stage = auditStage(audit);
 
-    const stateOf = (done, active) => (done ? "done" : active ? "current" : "upcoming");
-    const submitted = reached(audit, "PENDING_ASSIGNMENT");
-    const assigned = reached(audit, "ASSIGNED");
+    const status = audit.status;
+    const assigned = status !== "PENDING_ASSIGNMENT";
+    const oriented = assigned && (p.auditors || []).every((a) => a.orientation_status === "COMPLETED");
+    const confirmed = p.schedule?.status === "CONFIRMED";
+    const started = ["IN_PROGRESS", "PENDING_CLOSURE", "CLOSED"].includes(status);
+    const evaluated = started && p.checklist && p.checklist.pending === 0;
+    const ncsDone = started && (p.ncs?.total || 0) === (p.ncs?.accepted || 0);
+    const closed = status === "CLOSED";
+    const state = (done, current) => (done ? "done" : current ? "current" : "upcoming");
+
     const steps = [
-        { label: "Nominate", state: stateOf(submitted, !submitted) },
-        { label: "Assign", state: stateOf(assigned, submitted && !assigned) },
-        { label: "Orientation", state: stateOf(allOriented === true || (allOriented === null && Boolean(schedule)), assigned && !schedule) },
-        { label: "Schedule", state: stateOf(Boolean(schedule), assigned && !schedule) },
-        { label: "Confirm", state: stateOf(schedule?.status === "CONFIRMED", Boolean(schedule) && schedule.status !== "CONFIRMED") },
-        { label: "Execute", state: audit.status === "IN_PROGRESS" ? "current" : reached(audit, "PENDING_CLOSURE") ? "done" : "upcoming" },
+        { label: "Created", state: "done" },
+        { label: "Assign", state: state(assigned, !assigned) },
+        { label: "Orientation", state: state(oriented, assigned && !oriented) },
+        { label: "Schedule", state: state(Boolean(p.schedule), oriented && !p.schedule) },
+        { label: "Confirm", state: state(confirmed, Boolean(p.schedule) && !confirmed) },
+        { label: "Execute", state: state(evaluated, (confirmed && !started) || (started && !evaluated)) },
+        { label: "NCs", state: state(evaluated && ncsDone, started && !ncsDone) },
+        { label: "Close", state: state(closed, evaluated && ncsDone && !closed) },
     ];
+    const days = daysUntil(audit.planned_start_date);
 
     return (
         <>
-            <Link to="/audits" className="back-link">← All audits</Link>
+            <Link to="/audits" className="back-link">← {user.role === ROLES.EMPLOYEE ? "My audits" : "All audits"}</Link>
             <PageHeader
                 title={audit.audit_code}
                 subtitle={`${audit.project_name} · ${departmentLabel(audit.department)} · ${audit.framework_name}`}
-                actions={
-                    <>
-                        <Badge value={audit.status} label={AUDIT_STATUS_LABELS[audit.status]} />
-                        {canManage && isEditableAudit(audit) && (
-                            <>
-                                <button className="btn btn-ghost" onClick={async () => setDialog({ type: "edit", lookups: await loadAuditLookups() })}>Edit</button>
-                                <button className="btn btn-ghost danger" onClick={() => setDialog({ type: "delete" })}>Delete</button>
-                            </>
-                        )}
-                    </>
-                }
+                actions={<Badge value={audit.status} label={AUDIT_STATUS_LABELS[audit.status]} />}
             />
 
             <div className="card summary-card">
                 <dl className="summary">
-                    <div><dt>Planned</dt><dd>{formatDate(audit.planned_start_date)} → {formatDate(audit.planned_end_date)}</dd></div>
+                    <div>
+                        <dt>Planned</dt>
+                        <dd>
+                            {formatDate(audit.planned_start_date)} → {formatDate(audit.planned_end_date)}
+                            {days !== null && days >= 0 && <span className="muted"> · {relativeDays(days)}</span>}
+                        </dd>
+                    </div>
+                    <div><dt>Checklist</dt><dd>{p.checklist ? `${p.checklist.name} · ${p.checklist.item_count} items` : "—"}</dd></div>
                     <div><dt>Created by</dt><dd>{audit.created_by_name}</dd></div>
-                    <div><dt>Nominated</dt><dd>{nominations.length}</dd></div>
-                    <div><dt>Assigned</dt><dd>{assignments.length}</dd></div>
+                    <div>
+                        <dt>Next step</dt>
+                        <dd>{stage.key === "closed" ? "—" : <>{stage.next} <span className="muted">· {stageMeta(stage.key).owner}</span></>}</dd>
+                    </div>
                 </dl>
                 <Stepper steps={steps} />
             </div>
 
             <ErrorBox message={error} onRetry={reload} />
 
-            <Section step={1} title="Nominate auditors" owner="Director / Manager" state={steps[0].state}
-                aside={canManage && audit.status === "DRAFT" && (
-                    <button className="btn btn-success" disabled={nominations.length < 2 || busy === "submit"}
-                        title={nominations.length < 2 ? "Nominate at least two auditors first" : ""}
-                        onClick={() => run("submit", () => auditsApi.patch(audit.id, { status: "PENDING_ASSIGNMENT" }), "Sent to QMS for auditor assignment.")}>
-                        {busy === "submit" ? "Submitting…" : "Submit to QMS"}
-                    </button>
-                )}>
-                <NominationsSection audit={audit} nominations={nominations} auditors={auditors} canManage={canManage} run={run} busy={busy} />
+            <Section step={1} title="Assign auditors" owner="QMS" state={steps[1].state}>
+                <AssignmentSection key={p.auditors?.length} audit={audit} eligible={eligible} isQMS={isQMS} run={run} busy={busy} />
             </Section>
 
-            <Section step={2} title="Assign auditors & attach checklist" owner="QMS" state={steps[1].state}>
-                {submitted ? (
-                    <AssignmentsSection audit={audit} nominations={nominations} assignments={assignments}
-                        orientations={orientations} auditors={auditors} isQMS={isQMS} run={run} busy={busy} />
-                ) : (
-                    <p className="muted">Available once the Director / Manager submits the audit to QMS.</p>
-                )}
+            <Section step={2} title="Auditor orientation" owner="Auditors" state={steps[2].state}>
+                {assigned ? <OrientationSection audit={audit} run={run} busy={busy} /> : <p className="muted">Assigned auditors complete an orientation (PPT) before auditing.</p>}
             </Section>
 
-            <Section step={3} title="Auditor orientation" owner="Auditors" state={steps[2].state}>
-                {assigned ? (
-                    <OrientationSection audit={audit} orientations={orientations} isQMS={isQMS} run={run} busy={busy} onChanged={reload} />
-                ) : (
-                    <p className="muted">Assigned auditors complete orientation after assignment is completed.</p>
-                )}
+            <Section step={3} title="Schedule" owner="QMS" state={steps[3].state}>
+                <ScheduleSection key={schedule?.updated_at || "new"} audit={audit} schedule={schedule} isQMS={isQMS} run={run} busy={busy} />
             </Section>
 
-            <Section step={4} title="Schedule audit" owner="QMS" state={steps[3].state}>
-                <ScheduleSection key={schedule?.updated_at || "new"} audit={audit} schedule={schedule}
-                    confirmations={confirmations} isQMS={isQMS} run={run} busy={busy} />
-            </Section>
-
-            <Section step={5} title="Confirmations" owner="QMS" state={steps[4].state}>
+            <Section step={4} title="Confirmations" owner="QMS" state={steps[4].state}>
                 <ConfirmationsSection audit={audit} schedule={schedule} confirmations={confirmations} isQMS={isQMS} run={run} busy={busy} />
             </Section>
 
-            <Section step={6} title="Conduct audit, evidence & findings" owner="Auditors" state={steps[5].state}>
-                {audit.my_assignment && audit.my_assignment.orientation_status === "COMPLETED" && (
-                    <AuditorActions audit={audit} onChanged={reload} />
-                )}
-                <p className="muted">
-                    {audit.status === "IN_PROGRESS" && "The audit has started. "}
-                    Audit execution, evidence review, NCs, corrective actions and reports are not yet available on the backend.
-                </p>
+            <Section id="execute" step={5} title="Conduct audit & evaluate checklist" owner="Auditors" state={steps[5].state}>
+                <ExecutionSection audit={audit} ncs={ncs} isAuditor={isAuditor} run={run} busy={busy} reload={reload} />
             </Section>
 
-            {dialog?.type === "edit" && (
-                <AuditForm
-                    audit={audit}
-                    lookups={dialog.lookups}
-                    onClose={() => setDialog(null)}
-                    onSaved={(saved) => {
-                        setData((d) => ({ ...d, audit: saved }));
-                        notify("Audit updated.");
-                        setDialog(null);
-                    }}
-                />
-            )}
-            {dialog?.type === "delete" && (
-                <ConfirmDialog
-                    title="Delete audit"
-                    message={`Delete ${audit.audit_code}? Its nominations are deleted with it.`}
-                    onConfirm={async () => {
-                        await auditsApi.remove(audit.id);
-                        notify("Audit deleted.");
-                        navigate("/audits");
-                    }}
-                    onClose={() => setDialog(null)}
-                />
-            )}
+            <Section id="ncs" step={6} title="Non-conformities" owner="Auditor · Audited team · QMS" state={steps[6].state}>
+                <NcSection audit={audit} ncs={ncs} ncRole={ncRole} reload={reload} />
+            </Section>
+
+            <Section step={7} title="Close audit" owner="QMS" state={steps[7].state}>
+                {started ? <CloseSection audit={audit} isQMS={isQMS} run={run} busy={busy} /> : (
+                    <EmptyState title="Not started yet" text="An audit can be closed once every item is compliant and every NC is accepted." />
+                )}
+            </Section>
         </>
     );
 }

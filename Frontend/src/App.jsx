@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthProvider } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
+import DepartmentsProvider from "./auth/DepartmentsProvider";
 import { ToastProvider } from "./components/Toast";
 import Layout from "./components/Layout";
 import { ThemeProvider } from "./theme/ThemeContext";
@@ -11,6 +12,8 @@ import { ROLES } from "./constants";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ProjectsPage from "./pages/projects/ProjectsPage";
+import ProjectDetailPage from "./pages/projects/ProjectDetailPage";
+import AuditorPoolPage from "./pages/AuditorPoolPage";
 import AuditsPage from "./pages/audits/AuditsPage";
 import AuditDetailPage from "./pages/audits/AuditDetailPage";
 import ChecklistsPage from "./pages/checklists/ChecklistsPage";
@@ -19,9 +22,10 @@ import FrameworksPage from "./pages/FrameworksPage";
 import DepartmentsPage from "./pages/DepartmentsPage";
 import OrientationsPage from "./pages/OrientationsPage";
 
-const { DIRECTOR, MANAGER, QMS, AUDITOR } = ROLES;
+const { DIRECTOR, QMS, EMPLOYEE } = ROLES;
 
-const STAFF = [DIRECTOR, MANAGER, QMS];
+const STAFF = [DIRECTOR, QMS];
+const EVERYONE = [DIRECTOR, QMS, EMPLOYEE];
 
 const guarded = (element, roles) => (
     <RequireAuth roles={roles}>{element}</RequireAuth>
@@ -34,93 +38,29 @@ export default function App() {
                 <ThemeProvider>
                     <ToastProvider>
                         <Routes>
-                            <Route
-                                path="/login"
-                                element={<Login />}
-                            />
+                            <Route path="/login" element={<Login />} />
 
                             <Route
-                                element={guarded(<Layout />)}
+                                element={guarded(
+                                    <DepartmentsProvider>
+                                        <Layout />
+                                    </DepartmentsProvider>
+                                )}
                             >
-                                <Route
-                                    path="/dashboard"
-                                    element={<Dashboard />}
-                                />
-
-                                <Route
-                                    path="/projects"
-                                    element={guarded(
-                                        <ProjectsPage />,
-                                        STAFF
-                                    )}
-                                />
-
-                                <Route
-                                    path="/audits"
-                                    element={guarded(
-                                        <AuditsPage />,
-                                        [...STAFF, AUDITOR]
-                                    )}
-                                />
-
-                                <Route
-                                    path="/audits/:id"
-                                    element={guarded(
-                                        <AuditDetailPage />,
-                                        [...STAFF, AUDITOR]
-                                    )}
-                                />
-
-                                <Route
-                                    path="/checklists"
-                                    element={guarded(
-                                        <ChecklistsPage />,
-                                        STAFF
-                                    )}
-                                />
-
-                                <Route
-                                    path="/checklists/:id"
-                                    element={guarded(
-                                        <ChecklistDetailPage />,
-                                        STAFF
-                                    )}
-                                />
-
-                                <Route
-                                    path="/frameworks"
-                                    element={guarded(
-                                        <FrameworksPage />,
-                                        STAFF
-                                    )}
-                                />
-
-                                <Route
-                                    path="/departments"
-                                    element={guarded(
-                                        <DepartmentsPage />,
-                                        STAFF
-                                    )}
-                                />
-
-                                <Route
-                                    path="/orientations"
-                                    element={guarded(
-                                        <OrientationsPage />,
-                                        [QMS, AUDITOR]
-                                    )}
-                                />
+                                <Route path="/dashboard" element={<Dashboard />} />
+                                <Route path="/projects" element={guarded(<ProjectsPage />, STAFF)} />
+                                <Route path="/projects/:id" element={guarded(<ProjectDetailPage />, STAFF)} />
+                                <Route path="/auditor-pool" element={guarded(<AuditorPoolPage />, [QMS])} />
+                                <Route path="/audits" element={guarded(<AuditsPage />, EVERYONE)} />
+                                <Route path="/audits/:id" element={guarded(<AuditDetailPage />, EVERYONE)} />
+                                <Route path="/checklists" element={guarded(<ChecklistsPage />, STAFF)} />
+                                <Route path="/checklists/:id" element={guarded(<ChecklistDetailPage />, STAFF)} />
+                                <Route path="/frameworks" element={guarded(<FrameworksPage />, STAFF)} />
+                                <Route path="/departments" element={guarded(<DepartmentsPage />, STAFF)} />
+                                <Route path="/orientations" element={guarded(<OrientationsPage />, [QMS, EMPLOYEE])} />
                             </Route>
 
-                            <Route
-                                path="*"
-                                element={
-                                    <Navigate
-                                        to="/dashboard"
-                                        replace
-                                    />
-                                }
-                            />
+                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
                         </Routes>
                     </ToastProvider>
                 </ThemeProvider>

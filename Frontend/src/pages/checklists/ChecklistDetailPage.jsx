@@ -137,7 +137,7 @@ export default function ChecklistDetailPage() {
                 {items.length === 0 ? (
                     <EmptyState
                         title="No items yet"
-                        text="An audit that completes assignment with this checklist gets an empty checklist, so add the requirements first."
+                        text="Audits created with this checklist copy its active items, so add the requirements before QMS creates an audit."
                         action={canEdit && (
                             <button className="btn btn-primary" onClick={() => setDialog({ type: "item" })}>+ Add first item</button>
                         )}

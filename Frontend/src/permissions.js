@@ -2,8 +2,11 @@ import { ROLES } from "./constants";
 
 // UI-only gating; the backend enforces the real permissions.
 
-// Checklist writes: Director or QMS.
+// Projects and their members/POCs: Director.
+export const canManageProjects = (role) => role === ROLES.DIRECTOR;
+
+// Master checklists and their items: Director or QMS.
 export const canEditChecklists = (role) => role === ROLES.DIRECTOR || role === ROLES.QMS;
 
-// Audits can be edited or deleted until QMS completes auditor assignment.
-export const isEditableAudit = (audit) => ["DRAFT", "PENDING_ASSIGNMENT"].includes(audit.status);
+// Frameworks, audits, assignments, schedules, confirmations, NC verification, closure: QMS.
+export const isQms = (role) => role === ROLES.QMS;

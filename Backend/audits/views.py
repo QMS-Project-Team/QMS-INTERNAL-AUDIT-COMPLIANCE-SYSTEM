@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin,CreateModelMixin,UpdateModelMixin
 from django.db import transaction
+from django.db.models import Q
 from rest_framework import mixins, viewsets
 
 from django.shortcuts import get_object_or_404
@@ -83,9 +84,12 @@ class AuditViewSet(
                 project__project_owner=user
             )
 
+        # Employees see audits they are assigned to as auditors, and
+        # audits of the project they belong to (the audited team).
         if user.role == User.Role.EMPLOYEE:
             return queryset.filter(
-                auditor_assignments__auditor=user
+                Q(auditor_assignments__auditor=user)
+                | Q(project__members__employee=user)
             ).distinct()
 
         return queryset.none()
@@ -869,6 +873,7 @@ class AuditConfirmationViewSet(mixins.ListModelMixin,
 
 class AuditNCViewSet(
     viewsets.GenericViewSet,
+    ListModelMixin,
     RetrieveModelMixin,
     UpdateModelMixin
 ):

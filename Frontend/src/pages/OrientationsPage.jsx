@@ -65,7 +65,7 @@ export function OrientationTable({ orientations, isAuditor, onCompleted }) {
 
 export default function OrientationsPage() {
     const { user } = useAuth();
-    const isAuditor = user.role === ROLES.AUDITOR;
+    const isAuditor = user.role === ROLES.EMPLOYEE;
     const [filter, setFilter] = useState("");
     const { data, loading, error, reload, setData } = useLoad(() => orientationsApi.list());
 

@@ -13,11 +13,11 @@ python -m venv venv
 venv\Scripts\activate            # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_demo       # departments, frameworks, checklists + items, demo users
 python manage.py runserver
 ```
 
-`seed_demo` is safe to re-run. Run the tests with `python manage.py test`.
+`Backend/db.sqlite3` is committed with the shared dev data. To load users into an empty database run
+`python manage.py import_dummy_users dummy_users.csv`. Run the tests with `python manage.py test`.
 
 ### Frontend (http://localhost:5173)
 
@@ -35,27 +35,33 @@ All demo users share the password `Password@123`.
 
 | Username | Role | Department |
 | --- | --- | --- |
-| director1 | Director | QA |
-| manager1 | Manager | DEV |
+| director1 / director2 | Director | QA / DEV |
 | qms1 | QMS | ADMIN |
-| auditor1 / auditor2 / auditor3 | Auditor | DEV / HR / ADMIN |
-| member1 … member4 | Team member | QA / DEV / HR / ADMIN |
+| employee1 … employee7 | Employee | DEV, HR, ADMIN, QA, DEV, HR, ADMIN |
 
 ## Audit flow in the UI
 
-1. **Director / Manager**: create a project, plan an audit (framework + department), nominate at least two auditors from other departments, then **Submit to QMS**.
-2. **QMS**: open the audit, assign a PRIMARY and a SECONDARY auditor from the nominees, then **Complete assignment**. This attaches the active checklist for the audit's framework and department.
-3. **Auditors**: mark their orientation complete from the dashboard.
-4. **QMS**: verify orientations, schedule the audit, and record the combined (T-15) and individual (T-7) confirmations. The schedule then becomes Confirmed.
+Follows *QMS Backend Flow and API Documentation* (Backend 8). Roles: Director, QMS, Employee. There is no
+permanent auditor role: an employee audits only while assigned to an audit.
 
-Audit execution, evidence, findings/NCs, corrective actions and reports are not implemented on the backend yet.
+1. **Director**: create projects, add employees as members, mark exactly one **Primary** and one **Secondary POC**
+   (plus any Additional POCs). Director or QMS maintain the master checklists per framework and department.
+2. **QMS**: create the audit (project + framework + dates). The department comes from the project and the matching
+   active checklist is copied into the audit. Then assign a Primary and a Secondary auditor from the *eligible
+   auditors*: POCs of other projects who aren't on another open audit. The audit becomes Assigned.
+3. **Assigned auditors**: complete orientation.
+4. **QMS**: schedule the audit (T-15 / T-7 dates are derived), record the Combined and Individual confirmations.
+5. **Auditor**: start the audit and evaluate each checklist item. A non-compliant item opens an NC; the auditor fills
+   the finding and risk action.
+6. **Audited team** (members of the audited project): fill correction, corrective and preventive action.
+7. **QMS**: accept the NC or request rework. After acceptance the auditor marks the item compliant.
+8. **QMS**: close the audit once every item is compliant and every NC is accepted.
 
-## API additions beyond the API reference
+## API additions beyond the backend documentation
 
-- `GET /api/auth/users/?role=&department=`: read-only user directory for the nomination and assignment pickers.
-- Audit objects include read-only `progress` (nominations, assigned auditors + orientation status, checklist, schedule, confirmations) and `my_assignment` (the requesting auditor's own assignment). These power the QMS and auditor dashboards without one request per audit.
-- Auditors can list and open the audits they are assigned to, which also makes the existing `POST /api/audits/<id>/start/` and `GET /api/audits/<id>/checklist/` reachable for them.
-- `/api/checklists/<id>/items/` (+ `/<item_id>/`): CRUD for master checklist items.
-- Checklist create/update/delete is allowed for **Director** as well as QMS. Frameworks remain QMS-only.
-- Deleting a record that is still referenced (e.g. a project with audits) returns `409` with a message instead of a `500`.
-- Schedule and confirmation POSTs take only the documented body fields (`audit` / `schedule` are set by the server), and duplicate nominations/assignments return `400`.
+- `GET /api/audits/<id>/ncs/`: list an audit's NCs (same visibility as `GET /ncs/<id>/`). Without it the
+  frontend has no way to find NC ids.
+- Employees also see audits of the project they belong to, so the audited team can reach its NCs
+  ("access based on assignment or audited-project membership").
+- The audit `progress` summary also reports checklist results (compliant / non-compliant / pending) and NC counts
+  (awaiting action, awaiting verification, rework required, accepted) for dashboards and the closure step.

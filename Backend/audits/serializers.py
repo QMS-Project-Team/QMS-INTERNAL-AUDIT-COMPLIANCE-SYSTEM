@@ -172,12 +172,30 @@ class AuditSerializer(serializers.ModelSerializer):
             )
 
         checklist = None
+        ncs = {"total": 0, "awaiting_action": 0, "awaiting_verification": 0,
+               "rework_required": 0, "accepted": 0}
         if hasattr(audit, "audit_checklist"):
+            items = list(audit.audit_checklist.items.all())
+            results = [item.result for item in items]
             checklist = {
                 "id": audit.audit_checklist.id,
                 "name": audit.audit_checklist.checklist.name,
-                "item_count": len(audit.audit_checklist.items.all()),
+                "item_count": len(items),
+                "compliant": results.count(AuditChecklistItem.Result.COMPLIANT),
+                "non_compliant": results.count(AuditChecklistItem.Result.NON_COMPLIANT),
+                "pending": results.count(AuditChecklistItem.Result.PENDING),
             }
+
+            for nc in AuditNC.objects.filter(audit_checklist_item__in=items):
+                ncs["total"] += 1
+                if nc.status == AuditNC.Status.ACCEPTED:
+                    ncs["accepted"] += 1
+                elif nc.status == AuditNC.Status.REWORK_REQUIRED:
+                    ncs["rework_required"] += 1
+                elif nc.correction.strip() or nc.corrective_action.strip():
+                    ncs["awaiting_verification"] += 1
+                else:
+                    ncs["awaiting_action"] += 1
 
         return {
             "auditors": auditors,
@@ -188,6 +206,7 @@ class AuditSerializer(serializers.ModelSerializer):
             "checklist": checklist,
             "schedule": schedule,
             "confirmations": confirmations,
+            "ncs": ncs,
         }
 
     def get_my_assignment(self, audit):

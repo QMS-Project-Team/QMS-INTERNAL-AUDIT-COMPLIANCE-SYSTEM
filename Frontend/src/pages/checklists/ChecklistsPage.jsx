@@ -9,13 +9,13 @@ import {
     Badge, ConfirmDialog, EmptyState, ErrorBox, Field, Loading, Modal, PageHeader, SearchInput,
 } from "../../components/ui";
 import { formatDate } from "../../utils/format";
-import { DEPARTMENTS, departmentLabel } from "../../constants";
+import { departmentLabel, getDepartments } from "../../constants";
 import { canEditChecklists } from "../../permissions";
 
 export function ChecklistForm({ checklist, frameworks, onClose, onSaved }) {
     const [form, setForm] = useState({
         framework: checklist?.framework ?? frameworks[0]?.id ?? "",
-        department: checklist?.department ?? "QA",
+        department: checklist?.department ?? getDepartments()[0]?.id ?? "",
         name: checklist?.name ?? "",
         description: checklist?.description ?? "",
         is_active: checklist?.is_active ?? true,
@@ -29,7 +29,7 @@ export function ChecklistForm({ checklist, frameworks, onClose, onSaved }) {
         e.preventDefault();
         setBusy(true);
         setError("");
-        const body = { ...form, framework: Number(form.framework), name: form.name.trim() };
+        const body = { ...form, framework: Number(form.framework), department: Number(form.department), name: form.name.trim() };
         try {
             const saved = checklist ? await checklistsApi.update(checklist.id, body) : await checklistsApi.create(body);
             onSaved(saved, Boolean(checklist));
@@ -61,8 +61,8 @@ export function ChecklistForm({ checklist, frameworks, onClose, onSaved }) {
                     </select>
                 </Field>
                 <Field label="Department">
-                    <select className="input" value={form.department} onChange={set("department")}>
-                        {DEPARTMENTS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                    <select className="input" value={form.department} onChange={set("department")} required>
+                        {getDepartments().map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                 </Field>
                 <Field label="Name" full>
@@ -73,7 +73,7 @@ export function ChecklistForm({ checklist, frameworks, onClose, onSaved }) {
                 </Field>
                 <label className="check field-full">
                     <input type="checkbox" checked={form.is_active} onChange={set("is_active")} />
-                    Active. When an audit's assignment is completed, the active checklist matching its framework and department is used.
+                    Active. When QMS creates an audit, the active checklist for its framework and department is copied into the audit. Later edits here don't change existing audits.
                 </label>
             </form>
             <ErrorBox message={error} />
@@ -100,20 +100,11 @@ export default function ChecklistsPage() {
         return (data?.checklists || []).filter(
             (c) =>
                 (!framework || String(c.framework) === framework) &&
-                (!department || c.department === department) &&
+                (!department || String(c.department) === department) &&
                 [c.name, c.description, c.framework_name].some((v) => v?.toLowerCase().includes(q))
         );
     }, [data, search, framework, department]);
 
-    // Flag framework+department pairs with more than one active checklist: the backend picks the first.
-    const duplicates = useMemo(() => {
-        const counts = {};
-        (data?.checklists || []).filter((c) => c.is_active).forEach((c) => {
-            const key = `${c.framework}-${c.department}`;
-            counts[key] = (counts[key] || 0) + 1;
-        });
-        return counts;
-    }, [data]);
 
     const onSaved = (saved, isEdit) => {
         setData((d) => ({
@@ -134,7 +125,7 @@ export default function ChecklistsPage() {
         <>
             <PageHeader
                 title="Master checklists"
-                subtitle="One checklist per framework and department. Audits pick theirs automatically."
+                subtitle="One checklist per framework and department. Each new audit gets a copy of the matching checklist."
                 actions={canEdit && (
                     <button className="btn btn-primary" onClick={() => setDialog({ type: "form" })} disabled={!data?.frameworks.length}>
                         + New checklist
@@ -151,7 +142,7 @@ export default function ChecklistsPage() {
                     </select>
                     <select className="input" value={department} onChange={(e) => setDepartment(e.target.value)}>
                         <option value="">All departments</option>
-                        {DEPARTMENTS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        {getDepartments().map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                 </div>
 
@@ -179,9 +170,6 @@ export default function ChecklistsPage() {
                                     <tr key={c.id}>
                                         <td>
                                             <Link to={`/checklists/${c.id}`} className="link"><strong>{c.name}</strong></Link>
-                                            {c.is_active && duplicates[`${c.framework}-${c.department}`] > 1 && (
-                                                <div className="warn-text">Another active checklist has the same framework and department</div>
-                                            )}
                                         </td>
                                         <td>{c.framework_name}</td>
                                         <td>{departmentLabel(c.department)}</td>

@@ -36,13 +36,15 @@ const ICONS = {
 
     orientations:
         "M12 14l9-5-9-5-9 5 9 5zm0 0v7m-6-4.5V12",
+
+    pool:
+        "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
 };
 
 const {
     DIRECTOR,
-    MANAGER,
     QMS,
-    AUDITOR,
+    EMPLOYEE,
 } = ROLES;
 
 const NAV = [
@@ -55,43 +57,49 @@ const NAV = [
         to: "/projects",
         label: "Projects",
         icon: "projects",
-        roles: [DIRECTOR, MANAGER, QMS],
+        roles: [DIRECTOR, QMS],
     },
     {
         to: "/audits",
         label: "Audits",
         icon: "audits",
-        roles: [DIRECTOR, MANAGER, QMS],
+        roles: [DIRECTOR, QMS],
     },
     {
         to: "/audits",
         label: "My audits",
         icon: "audits",
-        roles: [AUDITOR],
+        roles: [EMPLOYEE],
+    },
+    {
+        to: "/auditor-pool",
+        label: "Auditor pool",
+        icon: "pool",
+        roles: [QMS],
     },
     {
         to: "/checklists",
         label: "Checklists",
         icon: "checklists",
-        roles: [DIRECTOR, MANAGER, QMS],
+        roles: [DIRECTOR, QMS],
     },
     {
         to: "/frameworks",
         label: "Frameworks",
         icon: "frameworks",
-        roles: [DIRECTOR, MANAGER, QMS],
+        roles: [DIRECTOR, QMS],
     },
     {
         to: "/departments",
         label: "Departments",
         icon: "departments",
-        roles: [DIRECTOR, MANAGER, QMS],
+        roles: [DIRECTOR, QMS],
     },
     {
         to: "/orientations",
         label: "Orientations",
         icon: "orientations",
-        roles: [QMS, AUDITOR],
+        roles: [QMS, EMPLOYEE],
     },
 ];
 

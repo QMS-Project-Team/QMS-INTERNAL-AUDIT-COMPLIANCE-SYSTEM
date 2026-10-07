@@ -73,6 +73,14 @@ const BADGE_TONES = {
     SECONDARY: "blue",
     COMBINED: "blue",
     INDIVIDUAL: "violet",
+    COMPLIANT: "green",
+    NON_COMPLIANT: "red",
+    OPEN: "amber",
+    SUBMITTED: "blue",
+    REWORK_REQUIRED: "red",
+    ACCEPTED: "green",
+    NONE: "gray",
+    ADDITIONAL: "gray",
 };
 
 export function Badge({ value, label, tone }) {

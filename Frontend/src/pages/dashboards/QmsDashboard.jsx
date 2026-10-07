@@ -1,20 +1,19 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { auditsApi, authApi, checklistsApi, frameworksApi, orientationsApi } from "../../api/endpoints";
+import { auditsApi, checklistsApi, frameworksApi, orientationsApi, pocsApi, projectsApi } from "../../api/endpoints";
 import useLoad from "../../hooks/useLoad";
 import { EmptyState, ErrorBox, Loading, PageHeader } from "../../components/ui";
-import { ChecklistCoverage } from "../../components/dashboard";
+import { ChecklistCoverage, TaskList } from "../../components/dashboard";
 import { formatDate } from "../../utils/format";
-import { ROLES, departmentLabel } from "../../constants";
-import { STAGES, auditStage, daysUntil, dueState, relativeDays, stageMeta } from "../../workflow";
+import { departmentLabel, pocLabel } from "../../constants";
+import { QMS_STAGES, STAGES, auditStage, daysUntil, dueState, pocReadiness, relativeDays, stageMeta } from "../../workflow";
 
-const QMS_STAGES = ["assign", "schedule", "confirm"];
-const ACTIVE_STAGES = STAGES.filter((s) => s.key !== "closing");
+const OPEN_STAGES = STAGES.filter((s) => s.key !== "closed");
 
 function Pipeline({ counts, active, onSelect }) {
     return (
-        <div className="pipeline" role="tablist" aria-label="Audits by stage">
-            {ACTIVE_STAGES.map((stage) => (
+        <div className="pipeline pipeline-wide" role="tablist" aria-label="Audits by stage">
+            {OPEN_STAGES.map((stage) => (
                 <button
                     key={stage.key}
                     role="tab"
@@ -35,7 +34,7 @@ function WorkQueue({ rows, filter, setFilter, overdueCount }) {
     const FILTERS = [
         { key: "mine", label: "Needs QMS" },
         { key: "overdue", label: `Overdue (${overdueCount})` },
-        { key: "all", label: "All active" },
+        { key: "all", label: "All open" },
     ];
     const stageFilter = stageMeta(filter);
 
@@ -55,7 +54,7 @@ function WorkQueue({ rows, filter, setFilter, overdueCount }) {
             {rows.length === 0 ? (
                 <EmptyState
                     title={filter === "mine" ? "Nothing waiting on QMS" : "No audits here"}
-                    text={filter === "mine" ? "Audits come back here when they need assignment, scheduling or confirmation." : null}
+                    text={filter === "mine" ? "Audits come back here when they need assignment, scheduling, confirmation, NC verification or closure." : null}
                 />
             ) : (
                 <div className="table-wrap">
@@ -72,7 +71,7 @@ function WorkQueue({ rows, filter, setFilter, overdueCount }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map(({ audit, stage, due, blocker }) => {
+                            {rows.map(({ audit, stage, due }) => {
                                 const meta = stageMeta(stage.key);
                                 const mine = QMS_STAGES.includes(stage.key);
                                 return (
@@ -93,9 +92,7 @@ function WorkQueue({ rows, filter, setFilter, overdueCount }) {
                                             <span className={`stage-pill stage-${stage.key}`}>{meta.label}</span>
                                             <div className="muted small">{meta.owner}</div>
                                         </td>
-                                        <td>
-                                            {blocker ? <span className="danger-text">⚠ {blocker}</span> : stage.next}
-                                        </td>
+                                        <td>{stage.next}</td>
                                         <td className="nowrap">
                                             {due ? (
                                                 <>
@@ -160,60 +157,41 @@ function OrientationTracker({ orientations }) {
     );
 }
 
-function AuditorWorkload({ auditors, audits }) {
-    const rows = auditors
-        .map((user) => {
-            const assignments = audits
-                .filter((a) => a.status !== "CLOSED")
-                .flatMap((a) => (a.progress?.auditors || []).filter((x) => x.auditor === user.id));
-            return {
-                user,
-                total: assignments.length,
-                primary: assignments.filter((a) => a.assignment_type === "PRIMARY").length,
-                secondary: assignments.filter((a) => a.assignment_type === "SECONDARY").length,
-                pending: assignments.filter((a) => a.orientation_status !== "COMPLETED").length,
-            };
-        })
-        .sort((a, b) => b.total - a.total || a.user.username.localeCompare(b.user.username));
-    const max = Math.max(1, ...rows.map((r) => r.total));
+/** The POC pool and who is currently tied up on an open audit. */
+function AuditorWorkload({ pocs, audits }) {
+    const busy = {};
+    audits
+        .filter((a) => a.status !== "CLOSED")
+        .forEach((a) => (a.progress?.auditors || []).forEach((x) => { busy[x.auditor] = { audit: a, type: x.assignment_type }; }));
+    const available = pocs.filter((p) => !busy[p.employee]);
 
     return (
         <div className="card">
-            <div className="card-head"><h2>Auditor workload</h2></div>
-            {rows.length === 0 ? (
-                <p className="muted">No users with the Auditor role.</p>
+            <div className="card-head">
+                <h2>Auditor pool</h2>
+                <Link to="/auditor-pool" className="link">Full pool →</Link>
+            </div>
+            <div className="progress-line">
+                <div className="progress"><span style={{ width: `${pocs.length ? (available.length / pocs.length) * 100 : 0}%` }} /></div>
+                <span>{available.length} of {pocs.length} POCs available</span>
+            </div>
+            {pocs.length === 0 ? (
+                <p className="muted">No POCs yet. Directors mark them on their projects.</p>
             ) : (
-                <div className="table-wrap">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Auditor</th>
-                                <th>Dept.</th>
-                                <th>Active audits</th>
-                                <th className="num" title="Primary / Secondary">P / S</th>
-                                <th className="num">Orientation due</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((r) => (
-                                <tr key={r.user.id}>
-                                    <td>{r.user.first_name ? `${r.user.first_name} ${r.user.last_name}` : r.user.username}</td>
-                                    <td>{departmentLabel(r.user.department)}</td>
-                                    <td>
-                                        <span className="bar-cell">
-                                            <span className="bar"><span style={{ width: `${(r.total / max) * 100}%` }} /></span>
-                                            {r.total}
-                                        </span>
-                                    </td>
-                                    <td className="num nowrap">{r.primary} / {r.secondary}</td>
-                                    <td className="num">{r.pending ? <span className="due due-soon">{r.pending}</span> : 0}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <ul className="plain-list">
+                    {pocs.slice(0, 8).map((p) => (
+                        <li key={p.id}>
+                            <span><strong>{p.employee_name}</strong> <span className="muted">· {pocLabel(p.poc_type)}, {p.project_code}</span></span>
+                            {busy[p.employee] ? (
+                                <Link to={`/audits/${busy[p.employee].audit.id}`} className="chip mono">{busy[p.employee].audit.audit_code}</Link>
+                            ) : (
+                                <span className="ok small">Available</span>
+                            )}
+                        </li>
+                    ))}
+                </ul>
             )}
-            <p className="table-note muted">Auditors never audit their own department; roughly one auditor per five team members.</p>
+            <p className="table-note muted">An employee can be on one open audit at a time and never audits their own project.</p>
         </div>
     );
 }
@@ -222,43 +200,34 @@ export default function QmsDashboard({ user }) {
     const [filter, setFilter] = useState("mine");
 
     const { data, loading, error, reload } = useLoad(async () => {
-        const [audits, orientations, checklists, frameworks, auditors] = await Promise.all([
+        const [audits, orientations, checklists, frameworks, pocs, projects] = await Promise.all([
             auditsApi.list(),
             orientationsApi.list(),
             checklistsApi.list(),
             frameworksApi.list(),
-            authApi.users({ role: ROLES.AUDITOR }),
+            pocsApi.list(),
+            projectsApi.list(),
         ]);
-        return { audits, orientations, checklists, frameworks, auditors };
+        return { audits, orientations, checklists, frameworks, pocs, projects };
     });
 
-    const rows = useMemo(() => {
-        if (!data) return [];
-        return data.audits.map((audit) => {
+    const rows = useMemo(
+        () => (data?.audits || []).map((audit) => {
             const stage = auditStage(audit);
-            const hasChecklist = data.checklists.some(
-                (c) => c.is_active && c.framework === audit.framework && c.department === audit.department
-            );
-            return {
-                audit,
-                stage,
-                due: dueState(stage.due),
-                blocker: stage.key === "assign" && !hasChecklist
-                    ? `No active ${audit.framework_name} checklist for ${departmentLabel(audit.department)}`
-                    : null,
-            };
-        });
-    }, [data]);
+            return { audit, stage, due: dueState(stage.due) };
+        }),
+        [data]
+    );
 
     if (loading && !data) return <Loading />;
     if (!data) return <ErrorBox message={error} onRetry={reload} />;
 
-    const active = rows.filter((r) => r.stage.key !== "closing");
-    const counts = active.reduce((acc, r) => ({ ...acc, [r.stage.key]: (acc[r.stage.key] || 0) + 1 }), {});
-    const overdue = active.filter((r) => r.due?.tone === "overdue");
-    const mineCount = active.filter((r) => QMS_STAGES.includes(r.stage.key)).length;
+    const open = rows.filter((r) => r.stage.key !== "closed");
+    const counts = open.reduce((acc, r) => ({ ...acc, [r.stage.key]: (acc[r.stage.key] || 0) + 1 }), {});
+    const overdue = open.filter((r) => r.due?.tone === "overdue");
+    const mineCount = open.filter((r) => QMS_STAGES.includes(r.stage.key)).length;
 
-    const visible = active
+    const visible = open
         .filter((r) =>
             filter === "all" ? true
                 : filter === "mine" ? QMS_STAGES.includes(r.stage.key)
@@ -266,6 +235,19 @@ export default function QmsDashboard({ user }) {
                         : r.stage.key === filter
         )
         .sort((a, b) => (a.stage.due?.getTime() ?? Infinity) - (b.stage.due?.getTime() ?? Infinity));
+
+    // Projects QMS could audit now: active, POCs set, and no open audit yet.
+    const auditedProjects = new Set(data.audits.filter((a) => a.status !== "CLOSED").map((a) => a.project));
+    const readyProjects = data.projects
+        .filter((p) => p.status === "ACTIVE" && !auditedProjects.has(p.id))
+        .filter((p) => pocReadiness(data.pocs.filter((m) => m.project === p.id)).ready)
+        .map((p) => ({
+            key: p.id,
+            to: `/projects/${p.id}`,
+            code: p.project_code,
+            text: `${p.name} · ${departmentLabel(p.department)}`,
+            meta: "Create audit",
+        }));
 
     const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
@@ -276,8 +258,8 @@ export default function QmsDashboard({ user }) {
                 subtitle={`QMS dashboard · ${today}`}
                 actions={
                     <>
-                        <Link to="/checklists" className="btn btn-ghost">Checklists</Link>
-                        <Link to="/audits" className="btn btn-primary">All audits</Link>
+                        <Link to="/auditor-pool" className="btn btn-ghost">Auditor pool</Link>
+                        <Link to="/audits" className="btn btn-primary">Audits</Link>
                     </>
                 }
             />
@@ -299,9 +281,12 @@ export default function QmsDashboard({ user }) {
             <WorkQueue rows={visible} filter={filter} setFilter={setFilter} overdueCount={overdue.length} />
 
             <div className="grid-2">
+                <TaskList title="Projects ready for an audit" items={readyProjects} viewAll={false}
+                    empty="No active project with Primary + Secondary POCs is waiting for an audit." />
                 <OrientationTracker orientations={data.orientations} />
-                <AuditorWorkload auditors={data.auditors} audits={data.audits} />
             </div>
+
+            <AuditorWorkload pocs={data.pocs} audits={data.audits} />
 
             <ChecklistCoverage frameworks={data.frameworks} checklists={data.checklists} />
         </>

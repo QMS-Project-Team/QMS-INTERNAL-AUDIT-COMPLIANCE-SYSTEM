@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { projectsApi } from "../../api/endpoints";
+import { Link } from "react-router-dom";
+import { pocsApi, projectMembersApi, projectsApi } from "../../api/endpoints";
 import { errorMessage } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import useLoad from "../../hooks/useLoad";
@@ -8,12 +9,24 @@ import {
     Badge, ConfirmDialog, EmptyState, ErrorBox, Field, Loading, Modal, PageHeader, SearchInput,
 } from "../../components/ui";
 import { formatDate } from "../../utils/format";
-import { DEPARTMENTS, PROJECT_STATUSES, departmentLabel, isManagement } from "../../constants";
+import { PROJECT_STATUSES, ROLES, departmentLabel, getDepartments } from "../../constants";
+import { canManageProjects } from "../../permissions";
+import { pocReadiness } from "../../workflow";
 
-const EMPTY = { project_code: "", name: "", department: "QA", description: "", status: "ACTIVE" };
+const EMPTY = { project_code: "", name: "", department: "", description: "", status: "ACTIVE" };
 
-function ProjectForm({ project, onClose, onSaved }) {
-    const [form, setForm] = useState(project ? { ...EMPTY, ...project } : EMPTY);
+export function ReadinessBadge({ readiness, status }) {
+    if (status && status !== "ACTIVE") return <Badge value="INACTIVE" label="Inactive" />;
+    if (readiness.ready) return <Badge value="ACTIVE" label="Ready for audit" />;
+    const missing = [!readiness.primary && "Primary", !readiness.secondary && "Secondary"].filter(Boolean);
+    return <Badge tone="amber" label={`Needs ${missing.join(" & ")} POC`} />;
+}
+
+export function ProjectForm({ project, onClose, onSaved }) {
+    const departments = getDepartments();
+    const [form, setForm] = useState(
+        project ? { ...EMPTY, ...project } : { ...EMPTY, department: departments[0]?.id ?? "" }
+    );
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
@@ -25,7 +38,7 @@ function ProjectForm({ project, onClose, onSaved }) {
         const body = {
             project_code: form.project_code.trim(),
             name: form.name.trim(),
-            department: form.department,
+            department: Number(form.department),
             description: form.description,
             status: form.status,
         };
@@ -60,8 +73,8 @@ function ProjectForm({ project, onClose, onSaved }) {
                     <input className="input" value={form.name} onChange={set("name")} required maxLength={150} />
                 </Field>
                 <Field label="Department">
-                    <select className="input" value={form.department} onChange={set("department")}>
-                        {DEPARTMENTS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                    <select className="input" value={form.department} onChange={set("department")} required>
+                        {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                 </Field>
                 <Field label="Status">
@@ -81,27 +94,22 @@ function ProjectForm({ project, onClose, onSaved }) {
     );
 }
 
-function ProjectView({ project, onClose }) {
-    return (
-        <Modal title={project.name} onClose={onClose}>
-            <dl className="details">
-                <dt>Code</dt><dd>{project.project_code}</dd>
-                <dt>Department</dt><dd>{departmentLabel(project.department)}</dd>
-                <dt>Owner</dt><dd>{project.project_owner_name}</dd>
-                <dt>Status</dt><dd><Badge value={project.status} /></dd>
-                <dt>Created</dt><dd>{formatDate(project.created_at)}</dd>
-                <dt>Updated</dt><dd>{formatDate(project.updated_at)}</dd>
-                <dt>Description</dt><dd className="pre">{project.description || "—"}</dd>
-            </dl>
-        </Modal>
-    );
-}
-
 export default function ProjectsPage() {
     const { user } = useAuth();
     const notify = useToast();
-    const canEdit = isManagement(user.role);
-    const { data, loading, error, reload, setData } = useLoad(() => projectsApi.list());
+    const canEdit = canManageProjects(user.role);
+    const { data: loaded, loading, error, reload, setData: setLoaded } = useLoad(async () => {
+        const projects = await projectsApi.list();
+        // Directors read their own members; QMS reads the cross-project POC list.
+        const members = user.role === ROLES.QMS
+            ? await pocsApi.list()
+            : (await Promise.all(projects.map((p) => projectMembersApi(p.id).list()))).flat();
+        return { projects, members };
+    });
+    const data = loaded?.projects;
+    const setData = (fn) => setLoaded((d) => ({ ...d, projects: fn(d.projects) }));
+    const readinessOf = (projectId) =>
+        pocReadiness((loaded?.members || []).filter((m) => m.project === projectId));
 
     const [search, setSearch] = useState("");
     const [department, setDepartment] = useState("");
@@ -112,7 +120,7 @@ export default function ProjectsPage() {
         const q = search.toLowerCase();
         return (data || []).filter(
             (p) =>
-                (!department || p.department === department) &&
+                (!department || String(p.department) === department) &&
                 (!status || p.status === status) &&
                 [p.project_code, p.name, p.description, p.project_owner_name].some((v) => v?.toLowerCase().includes(q))
         );
@@ -134,7 +142,9 @@ export default function ProjectsPage() {
         <>
             <PageHeader
                 title="Projects"
-                subtitle="Projects that audits are raised against."
+                subtitle={canEdit
+                    ? "Your projects. Add members and mark one Primary and one Secondary POC before QMS can audit a project."
+                    : "All projects. An audit can be created once a project has one Primary and one Secondary POC."}
                 actions={canEdit && (
                     <button className="btn btn-primary" onClick={() => setDialog({ type: "form" })}>+ New project</button>
                 )}
@@ -145,7 +155,7 @@ export default function ProjectsPage() {
                     <SearchInput value={search} onChange={setSearch} placeholder="Search code, name, owner…" />
                     <select className="input" value={department} onChange={(e) => setDepartment(e.target.value)}>
                         <option value="">All departments</option>
-                        {DEPARTMENTS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        {getDepartments().map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                     <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
                         <option value="">All statuses</option>
@@ -171,6 +181,7 @@ export default function ProjectsPage() {
                                     <th>Department</th>
                                     <th>Owner</th>
                                     <th>Status</th>
+                                    <th>Audit readiness</th>
                                     <th>Updated</th>
                                     <th className="right">Actions</th>
                                 </tr>
@@ -180,15 +191,16 @@ export default function ProjectsPage() {
                                     <tr key={p.id}>
                                         <td className="mono">{p.project_code}</td>
                                         <td>
-                                            <strong>{p.name}</strong>
+                                            <Link to={`/projects/${p.id}`} className="link"><strong>{p.name}</strong></Link>
                                             {p.description && <div className="muted clamp">{p.description}</div>}
                                         </td>
                                         <td>{departmentLabel(p.department)}</td>
                                         <td>{p.project_owner_name}</td>
                                         <td><Badge value={p.status} /></td>
+                                        <td><ReadinessBadge readiness={readinessOf(p.id)} status={p.status} /></td>
                                         <td>{formatDate(p.updated_at)}</td>
                                         <td className="right nowrap">
-                                            <button className="btn btn-sm btn-ghost" onClick={() => setDialog({ type: "view", project: p })}>View</button>
+                                            <Link className="btn btn-sm btn-ghost" to={`/projects/${p.id}`}>{canEdit ? "Members" : "View"}</Link>
                                             {canEdit && (
                                                 <>
                                                     <button className="btn btn-sm btn-ghost" onClick={() => setDialog({ type: "form", project: p })}>Edit</button>
@@ -207,7 +219,6 @@ export default function ProjectsPage() {
             {dialog?.type === "form" && (
                 <ProjectForm project={dialog.project} onClose={() => setDialog(null)} onSaved={onSaved} />
             )}
-            {dialog?.type === "view" && <ProjectView project={dialog.project} onClose={() => setDialog(null)} />}
             {dialog?.type === "delete" && (
                 <ConfirmDialog
                     title="Delete project"

@@ -1,18 +1,25 @@
 // Where an audit is in the process, who acts next, and by when.
-// Deadlines follow the audit-flow document: nominations by T-20 (escalation),
-// assignment/orientation/scheduling + combined confirmation by T-15,
-// individual confirmation by T-7.
+// Stages follow the backend flow: QMS creates the audit (checklist snapshot) →
+// assigns Primary + Secondary → auditors complete orientation → QMS schedules
+// (T-15) and records Combined (T-15) + Individual (T-7) confirmations →
+// auditor starts and evaluates the checklist → NCs: auditor finding/risk action,
+// audited team corrective actions, QMS verification → QMS closes.
 
 export const STAGES = [
-    { key: "draft", label: "With Director", owner: "Director / Manager" },
     { key: "assign", label: "Awaiting assignment", owner: "QMS" },
     { key: "orientation", label: "Orientation pending", owner: "Auditors" },
     { key: "schedule", label: "To schedule", owner: "QMS" },
     { key: "confirm", label: "Awaiting confirmation", owner: "QMS" },
     { key: "ready", label: "Ready to start", owner: "Auditors" },
-    { key: "in_progress", label: "In progress", owner: "Auditors" },
-    { key: "closing", label: "Closure", owner: "Auditors" },
+    { key: "evaluating", label: "Evaluating checklist", owner: "Auditors" },
+    { key: "nc_team", label: "NC action due", owner: "Audited team" },
+    { key: "nc_verify", label: "NC verification", owner: "QMS" },
+    { key: "nc_recheck", label: "Re-check items", owner: "Auditors" },
+    { key: "close", label: "Ready to close", owner: "QMS" },
+    { key: "closed", label: "Closed", owner: "" },
 ];
+
+export const QMS_STAGES = ["assign", "schedule", "confirm", "nc_verify", "close"];
 
 export const stageMeta = (key) => STAGES.find((s) => s.key === key);
 
@@ -33,11 +40,13 @@ export function daysUntil(dateValue) {
     return Math.round((date - startOfToday()) / DAY);
 }
 
-const minusDays = (dateString, days) => {
-    const d = parseDate(dateString);
+const minusDays = (dateValue, days) => {
+    const d = typeof dateValue === "string" && dateValue.length === 10 ? parseDate(dateValue) : new Date(dateValue);
     d.setDate(d.getDate() - days);
     return d;
 };
+
+const plusDays = (dateValue, days) => minusDays(dateValue, -days);
 
 export function relativeDays(days) {
     if (days === null || days === undefined) return "";
@@ -51,17 +60,12 @@ export function relativeDays(days) {
 export function auditStage(audit) {
     const p = audit.progress || {};
     const auditors = p.auditors || [];
-    const start = audit.planned_start_date;
+    const items = p.checklist || {};
+    const ncs = p.ncs || {};
+    // T-15 / T-7 are measured from the confirmed schedule when there is one.
+    const anchor = p.schedule?.scheduled_start || audit.planned_start_date;
 
-    if (audit.status === "DRAFT") {
-        const n = p.nomination_count || 0;
-        return {
-            key: "draft",
-            next: n < 2 ? `Nominate auditors (${n} of 2+)` : "Submit to QMS",
-            due: minusDays(start, 20),
-            dueLabel: "T-20",
-        };
-    }
+    if (audit.status === "CLOSED") return { key: "closed", next: "Closed", due: null, dueLabel: "" };
 
     if (audit.status === "PENDING_ASSIGNMENT") {
         const hasPrimary = auditors.some((a) => a.assignment_type === "PRIMARY");
@@ -69,8 +73,8 @@ export function auditStage(audit) {
         const missing = [!hasPrimary && "primary", !hasSecondary && "secondary"].filter(Boolean);
         return {
             key: "assign",
-            next: missing.length ? `Assign ${missing.join(" & ")} auditor` : "Complete assignment",
-            due: minusDays(start, 15),
+            next: `Assign ${missing.join(" & ")} auditor`,
+            due: minusDays(anchor, 15),
             dueLabel: "T-15",
         };
     }
@@ -81,27 +85,40 @@ export function auditStage(audit) {
             return {
                 key: "orientation",
                 next: `Waiting on ${pending.map((a) => a.auditor_name).join(", ")}`,
-                due: minusDays(start, 15),
+                due: minusDays(anchor, 15),
                 dueLabel: "T-15",
             };
         }
         if (!p.schedule) {
-            return { key: "schedule", next: "Schedule the audit", due: minusDays(start, 15), dueLabel: "T-15" };
+            return { key: "schedule", next: "Schedule the audit", due: minusDays(anchor, 15), dueLabel: "T-15" };
         }
         if (p.schedule.status !== "CONFIRMED") {
-            const combined = p.confirmations?.includes("COMBINED");
-            return combined
-                ? { key: "confirm", next: "Record individual confirmation", due: minusDays(start, 7), dueLabel: "T-7" }
-                : { key: "confirm", next: "Record combined confirmation", due: minusDays(start, 15), dueLabel: "T-15" };
+            return p.confirmations?.includes("COMBINED")
+                ? { key: "confirm", next: "Record individual confirmation", due: minusDays(anchor, 7), dueLabel: "T-7" }
+                : { key: "confirm", next: "Record combined confirmation", due: minusDays(anchor, 15), dueLabel: "T-15" };
         }
-        return { key: "ready", next: "Auditors can start the audit", due: parseDate(start), dueLabel: "Audit day" };
+        return { key: "ready", next: "Auditor can start the audit", due: new Date(anchor), dueLabel: "Audit day" };
     }
 
-    if (audit.status === "IN_PROGRESS") {
-        return { key: "in_progress", next: "Audit being conducted", due: null, dueLabel: "" };
-    }
+    // IN_PROGRESS (and PENDING_CLOSURE, which the backend does not use yet).
+    // Closure SLA from the audit plan: a full audit closes within 15 days of its start.
+    const closeBy = plusDays(anchor, 15);
 
-    return { key: "closing", next: audit.status === "CLOSED" ? "Closed" : "Awaiting closure", due: null, dueLabel: "" };
+    if (ncs.awaiting_action || ncs.rework_required) {
+        const n = ncs.awaiting_action + ncs.rework_required;
+        return { key: "nc_team", next: `${n} NC${n === 1 ? "" : "s"} need corrective action`, due: closeBy, dueLabel: "Close by" };
+    }
+    if (ncs.awaiting_verification) {
+        const n = ncs.awaiting_verification;
+        return { key: "nc_verify", next: `Verify ${n} NC${n === 1 ? "" : "s"}`, due: closeBy, dueLabel: "Close by" };
+    }
+    if (items.pending) {
+        return { key: "evaluating", next: `${items.pending} of ${items.item_count} items to evaluate`, due: closeBy, dueLabel: "Close by" };
+    }
+    if (items.non_compliant) {
+        return { key: "nc_recheck", next: `Mark ${items.non_compliant} accepted NC item${items.non_compliant === 1 ? "" : "s"} compliant`, due: closeBy, dueLabel: "Close by" };
+    }
+    return { key: "close", next: "Close the audit", due: closeBy, dueLabel: "Close by" };
 }
 
 /** Deadline status for a due date: overdue / soon / later. */
@@ -125,4 +142,27 @@ export function startBlocker(audit) {
     if (p.schedule.status !== "CONFIRMED") return "Waiting for QMS to record both confirmations.";
     if (!p.checklist) return "No checklist is attached to this audit.";
     return null;
+}
+
+/** NC status from the audited team's / QMS's point of view. */
+export function ncState(nc) {
+    if (nc.status === "ACCEPTED") return { key: "accepted", label: "Accepted", tone: "green" };
+    if (nc.status === "REWORK_REQUIRED") return { key: "rework", label: "Rework required", tone: "red" };
+    if (nc.correction?.trim() || nc.corrective_action?.trim()) {
+        return { key: "verify", label: "Awaiting verification", tone: "blue" };
+    }
+    return { key: "action", label: "Awaiting team action", tone: "amber" };
+}
+
+/** POC readiness for audit creation: exactly one Primary and one Secondary POC. */
+export function pocReadiness(members) {
+    const primary = members.filter((m) => m.poc_type === "PRIMARY").length === 1;
+    const secondary = members.filter((m) => m.poc_type === "SECONDARY").length === 1;
+    return { primary, secondary, ready: primary && secondary };
+}
+
+/** The logged-in employee's relationship to an audit. */
+export function myAuditRole(audit) {
+    if (audit.my_assignment) return `${audit.my_assignment.assignment_type.toLowerCase()} auditor`;
+    return "audited team";
 }
