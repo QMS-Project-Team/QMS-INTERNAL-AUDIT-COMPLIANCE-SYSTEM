@@ -1,11 +1,11 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from accounts.models import User
+from accounts.models import User,Department
 from frameworks.models import Checklist, ChecklistItem, Framework
-from projects.models import Project
+from projects.models import Project,ProjectMember
 
-from .models import Audit, AuditSchedule
+from .models import Audit, AuditSchedule,AuditorOrientation
 
 
 def make_user(username, role, department):
@@ -22,21 +22,131 @@ class AuditFlowTests(TestCase):
     """End-to-end audit workflow through the API, as the frontend drives it."""
 
     def setUp(self):
-        self.director = make_user("director", "DIRECTOR", "QA")
-        self.qms = make_user("qms", "QMS", "ADMIN")
-        self.auditor1 = make_user("aud1", "AUDITOR", "DEV")
-        self.auditor2 = make_user("aud2", "AUDITOR", "HR")
-        self.qa_auditor = make_user("aud3", "AUDITOR", "QA")
-
-        self.framework = Framework.objects.create(name="ISO 9001", code="ISO9001")
-        checklist = Checklist.objects.create(
-            framework=self.framework, department="QA", name="QA checklist"
+        self.qa = Department.objects.create(
+            name="QA"
         )
-        ChecklistItem.objects.create(checklist=checklist, item_code="1", question="q1", order=1)
-        ChecklistItem.objects.create(checklist=checklist, item_code="2", question="q2", order=2)
+
+        self.dev = Department.objects.create(
+            name="DEV"
+        )
+
+        self.hr = Department.objects.create(
+            name="HR"
+        )
+
+        self.admin = Department.objects.create(
+            name="ADMIN"
+        )
+
+
+        self.director = make_user(
+            "director",
+            User.Role.DIRECTOR,
+            self.qa,
+        )
+
+        self.qms = make_user(
+            "qms",
+            User.Role.QMS,
+            self.admin,
+        )
+
+        # Employees who will become auditors through assignment
+        self.auditor1 = make_user(
+            "aud1",
+            User.Role.EMPLOYEE,
+            self.dev,
+        )
+
+        self.auditor2 = make_user(
+            "aud2",
+            User.Role.EMPLOYEE,
+            self.hr,
+        )
+
+        self.qa_employee = make_user(
+            "qaemp",
+            User.Role.EMPLOYEE,
+            self.qa,
+        )
+
+        self.framework = Framework.objects.create(
+            name="ISO 9001",
+            code="ISO9001",
+        )
+
+        checklist = Checklist.objects.create(
+            framework=self.framework,
+            department=self.qa,
+            name="QA checklist",
+        )
+
+        ChecklistItem.objects.create(
+            checklist=checklist,
+            item_code="1",
+            question="q1",
+            order=1,
+        )
+
+        ChecklistItem.objects.create(
+            checklist=checklist,
+            item_code="2",
+            question="q2",
+            order=2,
+        )
 
         self.project = Project.objects.create(
-            project_code="P1", name="Project", department="QA", project_owner=self.director
+            project_code="P1",
+            name="Project",
+            department=self.qa,
+            project_owner=self.director,
+        )
+
+        # The audited project must have exactly one Primary
+        # and exactly one Secondary POC.
+        ProjectMember.objects.create(
+            project=self.project,
+            employee=self.qa_employee,
+            poc_type=ProjectMember.POCType.PRIMARY,
+        )
+
+        self.project2 = Project.objects.create(
+            project_code="P2",
+            name="Auditor Project",
+            department=self.dev,
+            project_owner=self.director,
+        )
+
+        ProjectMember.objects.create(
+            project=self.project2,
+            employee=self.auditor1,
+            poc_type=ProjectMember.POCType.PRIMARY,
+        )
+
+        self.project3 = Project.objects.create(
+            project_code="P3",
+            name="Second Auditor Project",
+            department=self.hr,
+            project_owner=self.director,
+        )
+
+        ProjectMember.objects.create(
+            project=self.project3,
+            employee=self.auditor2,
+            poc_type=ProjectMember.POCType.SECONDARY,
+        )
+
+        # Add a Secondary POC to the audited project.
+        secondary_employee = make_user(
+            "qaemp2",
+            User.Role.EMPLOYEE,
+            self.qa,
+        )
+
+        ProjectMember.objects.create(
+            project=self.project,
+            employee=secondary_employee,
+            poc_type=ProjectMember.POCType.SECONDARY,
         )
 
         self.client = APIClient()
@@ -46,10 +156,9 @@ class AuditFlowTests(TestCase):
         return self.client
 
     def create_audit(self):
-        response = self.as_user(self.director).post("/api/audits/", {
+        response = self.as_user(self.qms).post("/api/audits/", {
             "audit_code": "A1",
             "project": self.project.id,
-            "department": "QA",
             "framework": self.framework.id,
             "planned_start_date": "2026-10-10",
             "planned_end_date": "2026-10-12",
@@ -57,28 +166,9 @@ class AuditFlowTests(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         return response.data["id"]
 
-    def test_duplicate_nomination_is_rejected_cleanly(self):
-        audit_id = self.create_audit()
-        url = f"/api/audits/{audit_id}/nominations/"
-
-        self.assertEqual(self.client.post(url, {"auditor": self.auditor1.id}).status_code, 201)
-        response = self.client.post(url, {"auditor": self.auditor1.id})
-
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("already nominated", str(response.data))
-
-    def test_own_department_auditor_cannot_be_nominated(self):
-        audit_id = self.create_audit()
-        response = self.client.post(
-            f"/api/audits/{audit_id}/nominations/", {"auditor": self.qa_auditor.id}
-        )
-        self.assertEqual(response.status_code, 400)
 
     def test_full_flow_to_confirmed_schedule(self):
         audit_id = self.create_audit()
-        for auditor in (self.auditor1, self.auditor2):
-            self.client.post(f"/api/audits/{audit_id}/nominations/", {"auditor": auditor.id})
-        self.client.patch(f"/api/audits/{audit_id}/", {"status": "PENDING_ASSIGNMENT"})
 
         qms = self.as_user(self.qms)
         assign_url = f"/api/audits/{audit_id}/assignments/"
@@ -88,10 +178,6 @@ class AuditFlowTests(TestCase):
         duplicate = qms.post(assign_url, {"auditor": self.auditor2.id, "assignment_type": "PRIMARY"})
         self.assertEqual(duplicate.status_code, 400)
 
-        completed = qms.post(f"/api/audits/{audit_id}/complete-assignment/", {})
-        self.assertEqual(completed.status_code, 200, completed.data)
-        self.assertEqual(completed.data["checklist_name"], "QA checklist")
-        self.assertEqual(Audit.objects.get(id=audit_id).audit_checklist.items.count(), 2)
 
         # Schedule and confirmations take only the documented body fields.
         schedule = qms.post(f"/api/audits/{audit_id}/schedule/", {
@@ -123,7 +209,6 @@ class AuditFlowTests(TestCase):
 
         # QMS list carries the workflow summary.
         audit = qms.get("/api/audits/").data[0]
-        self.assertEqual(audit["progress"]["nomination_count"], 2)
         self.assertEqual(audit["progress"]["schedule"]["status"], "CONFIRMED")
         self.assertEqual(audit["progress"]["confirmations"], ["COMBINED", "INDIVIDUAL"])
         self.assertEqual(audit["progress"]["checklist"]["item_count"], 2)
@@ -135,13 +220,29 @@ class AuditFlowTests(TestCase):
         mine = auditor.get("/api/audits/").data
         self.assertEqual([a["id"] for a in mine], [audit_id])
         self.assertEqual(mine[0]["my_assignment"]["assignment_type"], "PRIMARY")
-        self.assertEqual(self.as_user(self.qa_auditor).get("/api/audits/").data, [])
 
         # Starting needs orientation first, then works.
         auditor = self.as_user(self.auditor1)
         self.assertEqual(auditor.post(f"/api/audits/{audit_id}/start/").status_code, 400)
         orientation_id = mine[0]["my_assignment"]["orientation_id"]
-        self.assertEqual(auditor.post(f"/api/orientations/{orientation_id}/complete/").status_code, 200)
+        print("AUDITOR1 ID:", self.auditor1.id)
+        print("ORIENTATION ID:", orientation_id)
+        print(
+            "ORIENTATION AUDITOR:",
+            AuditorOrientation.objects.get(id=orientation_id).assignment.auditor_id
+)
+        orientation_response = auditor.post(
+            f"/api/orientations/{orientation_id}/complete/"
+        )
+
+        print("ORIENTATION RESPONSE:", orientation_response.status_code)
+        print("ORIENTATION DATA:", orientation_response.data)
+
+        self.assertEqual(
+            orientation_response.status_code,
+            200,
+            orientation_response.data
+        )
         started = auditor.post(f"/api/audits/{audit_id}/start/")
         self.assertEqual(started.status_code, 200, started.data)
         self.assertEqual(started.data["status"], "IN_PROGRESS")
@@ -152,6 +253,138 @@ class AuditFlowTests(TestCase):
 
     def test_deleting_project_in_use_returns_409(self):
         self.create_audit()
-        response = self.client.delete(f"/api/projects/{self.project.id}/")
+
+        self.as_user(self.director)
+
+        response = self.client.delete(
+            f"/api/projects/{self.project.id}/"
+        )
+
         self.assertEqual(response.status_code, 409)
         self.assertIn("still in use", response.data["detail"])
+
+
+    def test_only_qms_can_create_audit(self):
+    # Director cannot create
+        self.client.force_authenticate(user=self.director)
+
+        response = self.client.post(
+            "/api/audits/",
+            {
+                "audit_code": "DIRECTOR-AUDIT",
+                "project": self.project.id,
+                "framework": self.framework.id,
+                "planned_start_date": "2026-10-10",
+                "planned_end_date": "2026-10-12",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+        # Employee cannot create
+        self.client.force_authenticate(user=self.auditor1)
+
+        response = self.client.post(
+            "/api/audits/",
+            {
+                "audit_code": "EMPLOYEE-AUDIT",
+                "project": self.project.id,
+                "framework": self.framework.id,
+                "planned_start_date": "2026-10-10",
+                "planned_end_date": "2026-10-12",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+
+    def test_audit_department_is_derived_from_project(self):
+        self.client.force_authenticate(user=self.qms)
+
+        response = self.client.post(
+            "/api/audits/",
+            {
+                "audit_code": "DEPT-TEST",
+                "project": self.project.id,
+                "framework": self.framework.id,
+                "planned_start_date": "2026-10-10",
+                "planned_end_date": "2026-10-12",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        audit = Audit.objects.get(audit_code="DEPT-TEST")
+
+        self.assertEqual(
+            audit.department_id,
+            self.project.department_id
+        )
+
+
+    def test_client_cannot_override_audit_department(self):
+        self.client.force_authenticate(user=self.qms)
+
+        # Project is QA, but we try to send DEV as department.
+        response = self.client.post(
+            "/api/audits/",
+            {
+                "audit_code": "OVERRIDE-DEPT",
+                "project": self.project.id,
+                "framework": self.framework.id,
+                "department": self.dev.id,
+                "planned_start_date": "2026-10-10",
+                "planned_end_date": "2026-10-12",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        audit = Audit.objects.get(audit_code="OVERRIDE-DEPT")
+
+        # Must still use project's department.
+        self.assertEqual(
+            audit.department_id,
+            self.project.department_id
+        )
+
+
+    def test_audit_creation_creates_correct_checklist(self):
+        self.client.force_authenticate(user=self.qms)
+
+        response = self.client.post(
+            "/api/audits/",
+            {
+                "audit_code": "CHECKLIST-TEST",
+                "project": self.project.id,
+                "framework": self.framework.id,
+                "planned_start_date": "2026-10-10",
+                "planned_end_date": "2026-10-12",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        audit = Audit.objects.get(audit_code="CHECKLIST-TEST")
+
+        audit_checklist = audit.audit_checklist
+
+        self.assertEqual(
+            audit_checklist.checklist.framework_id,
+            self.framework.id
+        )
+
+        self.assertEqual(
+            audit_checklist.checklist.department_id,
+            self.project.department_id
+        )
+
+        self.assertEqual(
+            audit_checklist.items.count(),
+            2
+        )

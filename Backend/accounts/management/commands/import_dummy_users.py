@@ -1,8 +1,7 @@
-import csv
-
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
-
+from accounts.models import Department
+import csv
 
 class Command(BaseCommand):
     help = "Import dummy users from a CSV file"
@@ -40,6 +39,10 @@ class Command(BaseCommand):
                         skipped_count += 1
                         continue
 
+                    department = Department.objects.get(
+                        name=row["department"]
+                    )
+
                     user = User(
                         employee_id=employee_id,
                         username=row["username"],
@@ -47,7 +50,7 @@ class Command(BaseCommand):
                         first_name=row["first_name"],
                         last_name=row["last_name"],
                         role=row["role"],
-                        department=row["department"],
+                        department=department,
                     )
 
                     user.set_password(row["password"])

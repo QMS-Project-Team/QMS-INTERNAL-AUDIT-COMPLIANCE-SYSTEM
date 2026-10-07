@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Audit, AuditorNomination
+from .models import Audit
 
 
 @admin.register(Audit)
@@ -30,24 +30,3 @@ class AuditAdmin(admin.ModelAdmin):
         "project__project_code",
     )
 
-
-@admin.register(AuditorNomination)
-class AuditorNominationAdmin(admin.ModelAdmin):
-
-    list_display = (
-        "audit",
-        "auditor",
-        "nominated_by",
-        "nominated_at",
-    )
-
-    list_filter = (
-        "auditor",
-        "nominated_by",
-    )
-
-    search_fields = (
-        "audit__audit_code",
-        "auditor__username",
-        "nominated_by__username",
-    )

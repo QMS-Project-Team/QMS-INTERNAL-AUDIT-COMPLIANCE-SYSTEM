@@ -2,8 +2,9 @@ from django.urls import include, path
 
 from rest_framework.routers import DefaultRouter
 
-from .views import (AuditViewSet,AuditorNominationViewSet,AuditorAssignmentViewSet,
-                    AuditorOrientationViewSet,AuditScheduleViewSet,AuditConfirmationViewSet)
+from .views import (AuditViewSet,AuditorAssignmentViewSet,
+                    AuditorOrientationViewSet,AuditScheduleViewSet,AuditConfirmationViewSet,
+                    AuditChecklistItemViewSet)
 
 
 router = DefaultRouter()
@@ -22,25 +23,7 @@ router.register(
 
 urlpatterns = [
     path("", include(router.urls)),
-    path(
-        "audits/<int:audit_id>/nominations/",
-        AuditorNominationViewSet.as_view({
-            "get": "list",
-            "post": "create",
-        }),
-        name="audit-nominations",
-    ),
 
-    path(
-        "audits/<int:audit_id>/nominations/<int:pk>/",
-        AuditorNominationViewSet.as_view({
-            "get": "retrieve",
-            "put": "update",
-            "patch": "partial_update",
-            "delete": "destroy",
-        }),
-        name="audit-nomination-detail",
-    ),
 
     # for list
     path(
@@ -56,9 +39,6 @@ urlpatterns = [
         "audits/<int:audit_id>/assignments/<int:pk>/",
         AuditorAssignmentViewSet.as_view({
             "get": "retrieve",
-            "put": "update",
-            "patch": "partial_update",
-            "delete": "destroy",
         }),
     ),
 
@@ -91,6 +71,14 @@ urlpatterns = [
         "audits/<int:audit_id>/confirmations/<int:pk>/",
         AuditConfirmationViewSet.as_view({
             "get": "retrieve",
+        }),
+    ),
+
+    path(
+    "audits/<int:audit_id>/checklist-items/<int:pk>/",
+        AuditChecklistItemViewSet.as_view({
+            "get": "retrieve",
+            "patch": "partial_update",
         }),
     ),
 

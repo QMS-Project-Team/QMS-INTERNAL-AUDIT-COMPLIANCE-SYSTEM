@@ -1,10 +1,11 @@
 from rest_framework import serializers
 
 from accounts.models import User
+from projects.models import Project, ProjectMember
 
-from .models import (Audit,AuditorNomination,AuditorAssignment,
+from .models import (Audit,AuditorAssignment,
                      AuditorOrientation,AuditSchedule,AuditConfirmation,
-                     AuditChecklist,AuditChecklistItem)
+                     AuditChecklist,AuditChecklistItem,AuditNC)
 
 
 class AuditSerializer(serializers.ModelSerializer):
@@ -53,15 +54,77 @@ class AuditSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             "id",
+            "department",
             "created_by",
             "created_by_name",
             "project_name",
             "framework_name",
             "progress",
             "my_assignment",
+            "status",
             "created_at",
             "updated_at",
         ]
+
+
+    def validate(self, attrs):
+
+        project = attrs.get("project")
+        framework = attrs.get("framework")
+
+        if not project:
+            raise serializers.ValidationError({
+                "project": "Project is required."
+            })
+
+        if not framework:
+            raise serializers.ValidationError({
+                "framework": "Framework is required."
+            })
+
+        # Project must be active
+        if project.status != Project.Status.ACTIVE:
+            raise serializers.ValidationError({
+                "project": "Only active projects can be audited."
+            })
+
+        # Framework must be active
+        if not framework.is_active:
+            raise serializers.ValidationError({
+                "framework": "Only active frameworks can be used for an audit."
+            })
+
+        # A project must have exactly one Primary POC
+        primary_poc_count = project.members.filter(
+            poc_type=ProjectMember.POCType.PRIMARY
+        ).count()
+
+        if primary_poc_count != 1:
+            raise serializers.ValidationError(
+            {
+                "project": (
+                    "The selected project must have exactly one Primary POC "
+                    "before an audit can be created."
+                )
+            }
+        )
+
+        # A project must have exactly one Secondary POC
+        secondary_poc_count = project.members.filter(
+            poc_type=ProjectMember.POCType.SECONDARY
+        ).count()
+
+        if secondary_poc_count != 1:
+            raise serializers.ValidationError(
+            {
+                "project": (
+                    "The selected project must have exactly one Secondary POC "
+                    "before an audit can be created."
+                )
+            }
+        )
+
+        return attrs
 
     def get_progress(self, audit):
         assignments = list(audit.auditor_assignments.all())
@@ -99,7 +162,6 @@ class AuditSerializer(serializers.ModelSerializer):
             }
 
         return {
-            "nomination_count": len(audit.auditor_nominations.all()),
             "auditors": auditors,
             "orientations_total": sum(1 for a in auditors if a["orientation_status"]),
             "orientations_completed": sum(
@@ -132,77 +194,6 @@ class AuditSerializer(serializers.ModelSerializer):
         return None
 
 
-class AuditorNominationSerializer(
-    serializers.ModelSerializer
-):
-
-    auditor_name = serializers.CharField(
-        source="auditor.username",
-        read_only=True
-    )
-
-    nominated_by_name = serializers.CharField(
-        source="nominated_by.username",
-        read_only=True
-    )
-
-    class Meta:
-        model = AuditorNomination
-
-        fields = [
-            "id",
-            "audit",
-            "auditor",
-            "auditor_name",
-            "nominated_by",
-            "nominated_by_name",
-            "nominated_at",
-        ]
-
-        read_only_fields = [
-            "id",
-            "audit",
-            "nominated_by",
-            "nominated_by_name",
-            "nominated_at",
-        ]
-
-    def validate_auditor(self, value):
-
-        if value.role != User.Role.AUDITOR:
-            raise serializers.ValidationError(
-                "Selected user must be an auditor."
-            )
-
-        return value
-
-    def validate(self, attrs):
-
-        auditor = attrs["auditor"]
-
-        audit = self.context["audit"]
-
-        if auditor.department == audit.department:
-            raise serializers.ValidationError(
-                "An auditor cannot audit their own department."
-            )
-
-        duplicate = AuditorNomination.objects.filter(
-            audit=audit,
-            auditor=auditor
-        )
-
-        if self.instance:
-            duplicate = duplicate.exclude(pk=self.instance.pk)
-
-        if duplicate.exists():
-            raise serializers.ValidationError(
-                "This auditor is already nominated for this audit."
-            )
-
-        return attrs
-
-
 
 class AuditorAssignmentSerializer(serializers.ModelSerializer):
     auditor_name = serializers.CharField(
@@ -217,7 +208,6 @@ class AuditorAssignmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AuditorAssignment
-
         fields = [
             "id",
             "audit",
@@ -230,53 +220,69 @@ class AuditorAssignmentSerializer(serializers.ModelSerializer):
         ]
 
         read_only_fields = [
-            "id",
             "audit",
             "assigned_by",
-            "assigned_by_name",
             "assigned_at",
         ]
 
-    def validate_auditor(self, value):
-        if value.role != User.Role.AUDITOR:
-            raise serializers.ValidationError(
-                "Selected user must be an auditor."
-            )
-
-        return value
-
     def validate(self, attrs):
-        auditor = attrs["auditor"]
         audit = self.context["audit"]
+        auditor = attrs.get("auditor")
+        assignment_type = attrs.get("assignment_type")
 
-        # Auditor cannot audit their own department
-        if auditor.department == audit.department:
+        # 1. Auditor must be an employee
+        if auditor.role != User.Role.EMPLOYEE:
             raise serializers.ValidationError(
-                "An auditor cannot audit their own department."
+                "Selected auditor must be an employee."
             )
 
-        # Auditor must have been nominated for this audit
-        is_nominated = AuditorNomination.objects.filter(
-            audit=audit,
-            auditor=auditor
-        ).exists()
+        # 2. Employee must be a member of a project
+        membership = ProjectMember.objects.filter(
+            employee=auditor
+        ).select_related("project").first()
 
-        if not is_nominated:
+        if not membership:
             raise serializers.ValidationError(
-                "Auditor must be nominated for this audit before assignment."
+                "Selected employee is not a member of any project."
             )
 
-        duplicate = AuditorAssignment.objects.filter(
+        # 3. Employee cannot have POC type NONE
+        if membership.poc_type == ProjectMember.POCType.NONE:
+            raise serializers.ValidationError(
+                "Selected employee must have a valid POC type."
+            )
+
+        # 4. Employee must come from a different project
+        if membership.project_id == audit.project_id:
+            raise serializers.ValidationError(
+                "Auditor cannot belong to the audited project."
+            )
+
+        # 5. Prevent duplicate assignment of same employee
+        if AuditorAssignment.objects.filter(
             audit=audit,
             auditor=auditor
-        )
-
-        if self.instance:
-            duplicate = duplicate.exclude(pk=self.instance.pk)
-
-        if duplicate.exists():
+        ).exists():
             raise serializers.ValidationError(
-                "This auditor is already assigned to this audit."
+                "This employee is already assigned to this audit."
+            )
+
+        # 6. Only PRIMARY / SECONDARY assignments
+        if assignment_type not in [
+            AuditorAssignment.AssignmentType.PRIMARY,
+            AuditorAssignment.AssignmentType.SECONDARY,
+        ]:
+            raise serializers.ValidationError(
+                "Assignment type must be PRIMARY or SECONDARY."
+            )
+
+        # 7. Only one PRIMARY / SECONDARY
+        if AuditorAssignment.objects.filter(
+            audit=audit,
+            assignment_type=assignment_type
+        ).exists():
+            raise serializers.ValidationError(
+                f"This audit already has a {assignment_type} auditor."
             )
 
         return attrs
@@ -483,6 +489,67 @@ class AuditChecklistSerializer(serializers.ModelSerializer):
             "framework_name",
             "department",
             "items",
+            "created_at",
+            "updated_at",
+        ]
+
+class AuditNCSerializer(serializers.ModelSerializer):
+
+    checklist_item_id = serializers.IntegerField(
+        source="audit_checklist_item.id",
+        read_only=True
+    )
+    target_checklist_item_id = serializers.IntegerField(
+        write_only=True,
+        required=True
+    )
+
+    item_code = serializers.CharField(
+        source="audit_checklist_item.checklist_item.item_code",
+        read_only=True
+    )
+
+    project_name = serializers.CharField(
+        source="audit_checklist_item.audit_checklist.audit.project.name",
+        read_only=True
+    )
+
+    verified_by_name = serializers.CharField(
+        source="verified_by.username",
+        read_only=True
+    )
+
+    class Meta:
+        model = AuditNC
+        fields = [
+            "id",
+            "checklist_item_id",
+            "item_code",
+            "project_name",
+            "finding",
+            "risk_action",
+            "correction",
+            "corrective_action",
+            "preventive_action",
+            "status",
+            "verified_by",
+            "verified_by_name",
+            "verified_at",
+            "verification_remarks",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "checklist_item_id",
+            "item_code",
+            "project_name",
+            "status",
+            "verified_by",
+            "verified_by_name",
+            "verified_at",
+            "verification_remarks",
             "created_at",
             "updated_at",
         ]

@@ -1,8 +1,9 @@
 from django.core.exceptions import ValidationError
+from datetime import timedelta
 
 from django.db import models
 
-from accounts.models import User
+from accounts.models import User,Department
 from projects.models import Project
 from frameworks.models import Framework,Checklist,ChecklistItem
 
@@ -28,9 +29,10 @@ class Audit(models.Model):
         related_name="audits"
     )
 
-    department = models.CharField(
-        max_length=20,
-        choices=User.Department.choices
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        related_name="audits"
     )
 
     framework = models.ForeignKey(
@@ -105,47 +107,20 @@ class AuditSchedule(models.Model):
                 "Scheduled end must be after scheduled start."
             )
 
+    @property
+    def t15_date(self):
+        return self.scheduled_start - timedelta(days=15)
+
+    @property
+    def t7_date(self):
+        return self.scheduled_start - timedelta(days=7)
+    
+
     def __str__(self):
         return (
             f"{self.audit.audit_code} - "
             f"{self.scheduled_start}"
         )
-
-class AuditorNomination(models.Model):
-
-    audit = models.ForeignKey(
-        Audit,
-        on_delete=models.CASCADE,
-        related_name="auditor_nominations"
-    )
-
-    auditor = models.ForeignKey(
-        User,
-        on_delete=models.PROTECT,
-        related_name="auditor_nominations"
-    )
-
-    nominated_by = models.ForeignKey(
-        User,
-        on_delete=models.PROTECT,
-        related_name="nominations_created"
-    )
-
-    nominated_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["audit", "auditor"],
-                name="unique_auditor_nomination"
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.audit.audit_code} - {self.auditor.username}"
-
 
 class AuditorAssignment(models.Model):
 
@@ -185,7 +160,11 @@ class AuditorAssignment(models.Model):
             models.UniqueConstraint(
                 fields=["audit", "auditor"],
                 name="unique_auditor_assignment"
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["audit", "assignment_type"],
+                name="unique_audit_assignment_type"
+            ),
         ]
 
     def __str__(self):
@@ -354,5 +333,107 @@ class AuditConfirmation(models.Model):
             f"{self.schedule.audit.audit_code} - "
             f"{self.confirmation_type}"
         )
+
+
+
+
+class AuditChecklistItemHistory(models.Model):
+
+    audit_checklist_item = models.ForeignKey(
+        AuditChecklistItem,
+        on_delete=models.CASCADE,
+        related_name="history"
+    )
+
+    remarks = models.TextField(
+        blank=True
+    )
+
+    evaluated_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="audit_checklist_history"
+    )
+
+    evaluated_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return (
+            f"{self.audit_checklist_item} - "
+            f"{self.evaluated_at}"
+        )
+
+
+class AuditNC(models.Model):
+
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "Open"
+        SUBMITTED = "SUBMITTED", "Submitted"
+        REWORK_REQUIRED = "REWORK_REQUIRED", "Rework Required"
+        ACCEPTED = "ACCEPTED", "Accepted"
+
+    audit_checklist_item = models.OneToOneField(
+        AuditChecklistItem,
+        on_delete=models.PROTECT,
+        related_name="nc"
+    )
+
+    # Filled by auditor
+    finding = models.TextField()
+
+    # Filled by auditor
+    risk_action = models.TextField(
+        blank=True
+    )
+
+    # Filled by audited team
+    correction = models.TextField(
+        blank=True
+    )
+
+    corrective_action = models.TextField(
+        blank=True
+    )
+
+    preventive_action = models.TextField(
+        blank=True
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=Status.choices,
+        default=Status.OPEN
+    )
+
+    # Auditor verification
+    verified_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="verified_audit_ncs",
+        null=True,
+        blank=True
+    )
+
+    verified_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    verification_remarks = models.TextField(
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def __str__(self):
+        return f"{self.audit_checklist_item} - NC"
 
 

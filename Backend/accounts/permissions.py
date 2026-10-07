@@ -11,16 +11,6 @@ class IsDirector(BasePermission):
         )
 
 
-class IsManager(BasePermission):
-    message = "Only Managers can access this resource."
-
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role == "MANAGER"
-        )
-
-
 class IsQMS(BasePermission):
     message = "Only QMS users can access this resource."
 
@@ -31,21 +21,21 @@ class IsQMS(BasePermission):
         )
 
 
-class IsAuditor(BasePermission):
-    message = "Only Auditors can access this resource."
+class IsEmployee(BasePermission):
+    message = "Only Employees can access this resource."
 
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated
-            and request.user.role == "AUDITOR"
+            and request.user.role == "EMPLOYEE"
         )
 
 
-class IsTeamMember(BasePermission):
-    message = "Only Team Members can access this resource."
+class IsDirectorOrQMS(BasePermission):
+    message = "Only Directors or QMS users can access this resource."
 
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated
-            and request.user.role == "TEAM_MEMBER"
+            and request.user.role in ["DIRECTOR", "QMS"]
         )

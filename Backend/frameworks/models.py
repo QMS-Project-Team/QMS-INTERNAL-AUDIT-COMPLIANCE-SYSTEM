@@ -1,5 +1,5 @@
 from django.db import models
-from accounts.models import User
+from accounts.models import User,Department
 
 
 class Framework(models.Model):
@@ -42,9 +42,10 @@ class Checklist(models.Model):
         related_name="checklists"
     )
 
-    department = models.CharField(
-        max_length=20,
-        choices=User.Department.choices
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        related_name="checklists"
     )
 
     name = models.CharField(
@@ -66,6 +67,14 @@ class Checklist(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["framework", "department"],
+                name="unique_framework_department_checklist"
+            )
+        ]
 
     def __str__(self):
         return f"{self.framework.code} - {self.department} - {self.name}"

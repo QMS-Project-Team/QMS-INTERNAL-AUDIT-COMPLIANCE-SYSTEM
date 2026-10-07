@@ -5,7 +5,7 @@ from rest_framework.generics import ListAPIView
 
 from rest_framework import viewsets
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import User
+from .models import User,Department
 from .serializers import LoginSerializer,UserSerializer
 
 
@@ -28,12 +28,11 @@ class DepartmentListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        departments = [
-            {
-                "id": value,
-                "name": label
-            }
-            for value, label in User.Department.choices
-        ]
+        departments = Department.objects.filter(
+            is_active=True
+        ).values(
+            "id",
+            "name"
+        )
 
         return Response(departments)
