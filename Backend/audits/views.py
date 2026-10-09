@@ -10,12 +10,11 @@ from rest_framework import mixins, viewsets
 
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.viewsets import ModelViewSet
 from rest_framework import viewsets
 
 from .services import create_audit_checklist
 
-from accounts.permissions import IsQMS,IsDirector
+from accounts.permissions import IsQMS
 
 from accounts.models import User
 from projects.models import ProjectMember
@@ -35,7 +34,7 @@ class AuditViewSet(
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
     viewsets.GenericViewSet
-):
+    ):
 
     serializer_class = AuditSerializer
 
