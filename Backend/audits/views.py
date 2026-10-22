@@ -244,11 +244,18 @@ class AuditViewSet(
 
         audit = self.get_object()
 
-        # 1. Only QMS can close an audit
-        if request.user.role != User.Role.QMS:
+        # 1. Only an assigned auditor can close an audit
+        is_assigned_auditor = AuditorAssignment.objects.filter(
+            audit=audit,
+            auditor=request.user
+        ).exists()
+
+        if not is_assigned_auditor:
             return Response(
                 {
-                    "detail": "Only QMS can close an audit."
+                    "detail": (
+                        "Only an assigned auditor can close this audit."
+                    )
                 },
                 status=status.HTTP_403_FORBIDDEN
             )
@@ -944,83 +951,13 @@ class AuditNCViewSet(
         # -------------------------------------------------
         # 2. QMS VERIFICATION
         # -------------------------------------------------
+        # 2. QMS READ-ONLY ACCESS
         if user.role == User.Role.QMS:
-
-            allowed_fields = {
-                "status",
-                "verification_remarks",
-            }
-
-            submitted_fields = set(request.data.keys())
-
-            invalid_fields = submitted_fields - allowed_fields
-
-            if invalid_fields:
-                return Response(
-                    {
-                        "detail": (
-                            "QMS can only update "
-                            "status and verification_remarks."
-                        ),
-                        "invalid_fields": list(invalid_fields)
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            verification_status = request.data.get("status")
-
-            allowed_statuses = {
-                AuditNC.Status.ACCEPTED,
-                AuditNC.Status.REWORK_REQUIRED,
-            }
-
-            if verification_status not in allowed_statuses:
-                return Response(
-                    {
-                        "detail": (
-                            "Status must be ACCEPTED "
-                            "or REWORK_REQUIRED."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Actions must be submitted before verification
-            if (
-                not nc.correction.strip()
-                and not nc.corrective_action.strip()
-            ):
-                return Response(
-                    {
-                        "detail": (
-                            "Correction or corrective action "
-                            "must be submitted before verification."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            nc.status = verification_status
-            nc.verification_remarks = request.data.get(
-                "verification_remarks",
-                ""
-            )
-            nc.verified_by = user
-            nc.verified_at = timezone.now()
-
-            nc.save(
-                update_fields=[
-                    "status",
-                    "verification_remarks",
-                    "verified_by",
-                    "verified_at",
-                    "updated_at",
-                ]
-            )
-
             return Response(
-                self.get_serializer(nc).data,
-                status=status.HTTP_200_OK
+                {
+                    "detail": "QMS has read-only access to NC records."
+                },
+                status=status.HTTP_403_FORBIDDEN
             )
 
         # -------------------------------------------------
@@ -1044,6 +981,8 @@ class AuditNCViewSet(
         auditor_fields = {
             "finding",
             "risk_action",
+            "status",
+            "verification_remarks",
         }
 
         team_fields = {
@@ -1058,21 +997,104 @@ class AuditNCViewSet(
         # 5. AUDITOR
         # -------------------------------------------------
 
+        
         if is_auditor:
 
-            invalid_fields = submitted_fields - auditor_fields
+            # Auditor is submitting a verification decision
+            if "status" in submitted_fields or "verification_remarks" in submitted_fields:
+
+                allowed_verification_statuses = {
+                    AuditNC.Status.ACCEPTED,
+                    AuditNC.Status.REWORK_REQUIRED,
+                }
+
+                verification_status = request.data.get("status")
+
+                if verification_status not in allowed_verification_statuses:
+                    return Response(
+                        {
+                            "detail": (
+                                "Status must be ACCEPTED "
+                                "or REWORK_REQUIRED."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Correction or corrective action must be submitted first
+                if (
+                    not (nc.correction or "").strip()
+                    and not (nc.corrective_action or "").strip()
+                ):
+                    return Response(
+                        {
+                            "detail": (
+                                "Correction or corrective action "
+                                "must be submitted before verification."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                invalid_fields = submitted_fields - {
+                    "status",
+                    "verification_remarks",
+                }
+
+                if invalid_fields:
+                    return Response(
+                        {
+                            "detail": (
+                                "Submit verification fields separately "
+                                "from finding or risk_action updates."
+                            ),
+                            "invalid_fields": list(invalid_fields),
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                nc.status = verification_status
+                nc.verification_remarks = request.data.get(
+                    "verification_remarks",
+                    ""
+                )
+                nc.verified_by = user
+                nc.verified_at = timezone.now()
+
+                nc.save(
+                    update_fields=[
+                        "status",
+                        "verification_remarks",
+                        "verified_by",
+                        "verified_at",
+                        "updated_at",
+                    ]
+                )
+
+                return Response(
+                    self.get_serializer(nc).data,
+                    status=status.HTTP_200_OK
+                )
+
+            # Ordinary auditor updates: finding and risk_action only
+            invalid_fields = submitted_fields - {
+                "finding",
+                "risk_action",
+            }
 
             if invalid_fields:
                 return Response(
                     {
                         "detail": (
                             "Auditors can only update "
-                            "finding and risk_action."
+                            "finding and risk_action, or submit "
+                            "a separate verification decision."
                         ),
                         "invalid_fields": list(invalid_fields)
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
+
 
         # -------------------------------------------------
         # 6. AUDITED PROJECT MEMBER
