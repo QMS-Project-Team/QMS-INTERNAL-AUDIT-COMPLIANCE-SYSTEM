@@ -9,8 +9,8 @@ Requires Python 3.12+ and Node.js 20.19+ (or 22.12+).
 
 ```bash
 cd Backend
-python -m venv venv
-venv\Scripts\activate            # macOS/Linux: source venv/bin/activate
+python -m venv env
+env\Scripts\activate            # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
@@ -24,7 +24,7 @@ python manage.py runserver
 ```bash
 cd Frontend
 npm install
-npm run dev
+npm run dev 
 ```
 
 The API URL defaults to `http://127.0.0.1:8000/api`; override it with `VITE_API_URL`.
