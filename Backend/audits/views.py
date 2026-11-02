@@ -28,6 +28,7 @@ from .serializers import (serializers,AuditSerializer,AuditorAssignmentSerialize
                           AuditConfirmationSerializer,AuditChecklistSerializer,
                           AuditChecklistItemSerializer,AuditNCSerializer)
 
+from .tasks import send_auditor_assignment_notification
 
 class AuditViewSet(
     mixins.ListModelMixin,
@@ -595,6 +596,11 @@ class AuditorAssignmentViewSet(ListModelMixin,
             assignment=assignment
         )
 
+        transaction.on_commit(
+            lambda assignment_id=assignment.id: (
+                send_auditor_assignment_notification.delay(assignment_id)
+            )
+        )
         primary_exists = AuditorAssignment.objects.filter(
             audit=audit,
             assignment_type=AuditorAssignment.AssignmentType.PRIMARY

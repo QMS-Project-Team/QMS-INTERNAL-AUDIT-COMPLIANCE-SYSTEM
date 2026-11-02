@@ -10,10 +10,12 @@ Requires Python 3.12+ and Node.js 20.19+ (or 22.12+).
 ```bash
 cd Backend
 python -m venv env
-env\Scripts\activate            # macOS/Linux: source venv/bin/activate
+env\Scripts\activate.bat            # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
+
+celery -A config worker --loglevel=INFO --pool=solo // issue for not reconnecting can be multiple port
 ```
 
 `Backend/db.sqlite3` is committed with the shared dev data. To load users into an empty database run
@@ -65,3 +67,25 @@ permanent auditor role: an employee audits only while assigned to an audit.
   ("access based on assignment or audited-project membership").
 - The audit `progress` summary also reports checklist results (compliant / non-compliant / pending) and NC counts
   (awaiting action, awaiting verification, rework required, accepted) for dashboards and the closure step.
+
+
+set EMAIL_HOST_USER=harjotkaur1242@gmail.com
+set EMAIL_HOST_PASSWORD=hpkqmkdcuwezlacf
+
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+send_mail(
+    "QMS Email Test",
+    "Testing email delivery from the QMS system.",
+    settings.DEFAULT_FROM_EMAIL,
+    ["kaurharjot127@gmail.com"],
+    fail_silently=False,
+)
+
+import os
+
+print("Username:", repr(os.environ.get("EMAIL_HOST_USER")))
+print("Password configured:", bool(os.environ.get("EMAIL_HOST_PASSWORD")))
+print("Password length:", len(os.environ.get("EMAIL_HOST_PASSWORD", "")))

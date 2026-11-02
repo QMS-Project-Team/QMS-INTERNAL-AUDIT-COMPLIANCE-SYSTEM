@@ -101,6 +101,12 @@ const NAV = [
         icon: "orientations",
         roles: [QMS, EMPLOYEE],
     },
+    {
+        to: "/qms/annual-audit-plan",
+        label: "Annual Audit Plan",
+        icon: "Annual Audit Plan",
+        roles: [QMS, EMPLOYEE],
+    },
 ];
 
 function Icon({ name }) {

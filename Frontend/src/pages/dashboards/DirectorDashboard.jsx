@@ -6,6 +6,7 @@ import { ChecklistCoverage, Stat, TaskList } from "../../components/dashboard";
 import { formatDate } from "../../utils/format";
 import { AUDIT_STATUS_LABELS, ROLE_LABELS, departmentLabel } from "../../constants";
 import { auditStage, pocReadiness, stageMeta } from "../../workflow";
+import NotificationPanel from "../../components/NotificationPanel";
 
 export default function DirectorDashboard({ user }) {
     const { data, loading, error, reload } = useLoad(async () => {
@@ -77,7 +78,7 @@ export default function DirectorDashboard({ user }) {
                     </>
                 }
             />
-
+            <NotificationPanel />
             {todo.length > 0 && (
                 <div className="banner banner-warn">
                     <span>
@@ -136,7 +137,7 @@ export default function DirectorDashboard({ user }) {
                     </div>
                 )}
             </div>
-
+                
             <ChecklistCoverage frameworks={frameworks} checklists={checklists} />
         </>
     );

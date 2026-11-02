@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 from datetime import timedelta
-
+from django.conf import settings
 from django.db import models
 
 from accounts.models import User,Department
@@ -439,3 +439,102 @@ class AuditNC(models.Model):
         return f"{self.audit_checklist_item} - NC"
 
 
+
+class AnnualAuditPlan(models.Model):
+    audit_year = models.PositiveIntegerField()
+
+    cycle_1_start = models.DateField()
+    cycle_1_end = models.DateField()
+
+    cycle_2_start = models.DateField()
+    cycle_2_end = models.DateField()
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="annual_audit_plans",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-audit_year"]
+
+    def __str__(self):
+        return f"Audit Plan {self.audit_year}"
+
+
+class Notification(models.Model):
+
+    class NotificationType(models.TextChoices):
+        ANNUAL_AUDIT_PLAN = "1", "Annual Audit Plan"
+        PROJECT = "2", "Project"
+        AUDIT_ASSIGNMENT = "3", "Audit Assignment"
+        AUDIT_REMINDER = "4", "Audit Reminder"
+        CHECKLIST_NC = "5", "Checklist / Non-Conformity"
+        CORRECTIVE_ACTION = "6", "Corrective Action"
+        AUDIT_CLOSURE = "7", "Audit Closure"
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+
+    notification_type = models.CharField(
+        max_length=2,
+        choices=NotificationType.choices,
+    )
+
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return (
+            f"{self.get_notification_type_display()} - "
+            f"{self.recipient}"
+        )
+class AuditReminderLog(models.Model):
+
+    class ReminderType(models.IntegerChoices):
+        FIFTEEN_DAYS = 15, "15 Days Before"
+        SEVEN_DAYS = 7, "7 Days Before"
+
+    audit = models.ForeignKey(
+        Audit,
+        on_delete=models.CASCADE,
+        related_name="reminder_logs"
+    )
+
+    auditor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="audit_reminder_logs"
+    )
+
+    reminder_days = models.PositiveSmallIntegerField(
+        choices=ReminderType.choices
+    )
+
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["audit", "auditor", "reminder_days"],
+                name="unique_audit_auditor_reminder"
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.audit.audit_code} - "
+            f"{self.auditor.username} - "
+            f"{self.reminder_days} Days"
+        )

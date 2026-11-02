@@ -6,7 +6,10 @@ from .views import (AuditViewSet,AuditorAssignmentViewSet,
                     AuditorOrientationViewSet,AuditScheduleViewSet,AuditConfirmationViewSet,
                     AuditChecklistItemViewSet,AuditNCViewSet)
 
-
+from .annual_planning import (
+    AnnualAuditPlanViewSet,
+    NotificationViewSet,
+)
 router = DefaultRouter()
 
 router.register(
@@ -19,6 +22,18 @@ router.register(
     "orientations",
     AuditorOrientationViewSet,
     basename="auditor-orientations"
+)
+
+router.register(
+    "audit-plans",
+    AnnualAuditPlanViewSet,
+    basename="audit-plan",
+)
+
+router.register(
+    "notifications",
+    NotificationViewSet,
+    basename="notification",
 )
 
 urlpatterns = [
@@ -96,3 +111,4 @@ urlpatterns = [
         }),
     ),
 ]
+

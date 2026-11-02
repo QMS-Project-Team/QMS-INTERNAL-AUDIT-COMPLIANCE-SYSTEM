@@ -10,6 +10,8 @@ from .models import (
     AuditConfirmation,
     AuditChecklistItemHistory,
     AuditNC,
+    AnnualAuditPlan,Notification,
+    AuditReminderLog
 )
 
 
@@ -162,3 +164,88 @@ class AuditNCAdmin(admin.ModelAdmin):
         "audit_checklist_item__checklist_item__item_code",
         "finding",
     )
+
+@admin.register(AnnualAuditPlan)
+class AnnualAuditPlanAdmin(admin.ModelAdmin):
+    list_display = (
+        "audit_year",
+        "cycle_1_start",
+        "cycle_1_end",
+        "cycle_2_start",
+        "cycle_2_end",
+        "created_by",
+        "created_at",
+    )
+
+    list_filter = (
+        "audit_year",
+        "created_at",
+    )
+
+    search_fields = (
+        "audit_year",
+        "created_by__employee_id",
+    )
+
+    ordering = ("-audit_year",)
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "recipient",
+        "notification_type",
+        "title",
+        "message",
+        "is_read",
+        "created_at",
+    )
+
+    list_filter = (
+        "notification_type",
+        "is_read",
+        "created_at",
+    )
+
+    search_fields = (
+        "recipient__username",
+        "title",
+        "message",
+    )
+
+    readonly_fields = ("created_at",)
+
+@admin.register(AuditReminderLog)
+class AuditReminderLogAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "audit",
+        "auditor",
+        "reminder_days",
+        "sent_at",
+    )
+
+    list_filter = (
+        "reminder_days",
+        "sent_at",
+    )
+
+    search_fields = (
+        "audit__audit_code",
+        "auditor__username",
+        "auditor__employee_id",
+    )
+
+    readonly_fields = (
+        "sent_at",
+    )
+
+    ordering = ("-sent_at",)

@@ -12,9 +12,16 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 
+from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+
+from dotenv import load_dotenv
+import os
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR / ".env")
+ 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -46,6 +53,7 @@ INSTALLED_APPS = [
     'projects',
     'frameworks',
     'audits',
+    'django_celery_beat'
 
 ]
 
@@ -133,12 +141,27 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+
+import os
+
 MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+    "default": {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "use_tls": True,
+            "timeout": 20,
+            "username": os.environ.get("EMAIL_HOST_USER", ""),
+            "password": os.environ.get("EMAIL_HOST_PASSWORD", ""),
+        },
     },
 }
 
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "EMAIL_HOST_USER",
+    "harjotkaur1242@gmail.com",
+)
 ######################
 AUTH_USER_MODEL = "accounts.User"
 
@@ -182,3 +205,35 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
 ]
+
+# Celery configuration
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/1"
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = USE_TZ
+
+
+CELERY_BEAT_SCHEDULER = (
+    "django_celery_beat.schedulers:DatabaseScheduler"
+)
+
+CELERY_TIMEZONE = "Asia/Kolkata"
+
+CELERY_ENABLE_UTC = True
+
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+# EMAIL_HOST = "smtp.gmail.com"
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+
+# EMAIL_HOST_USER = "your-email@gmail.com"
+# EMAIL_HOST_PASSWORD = "hpkqmkdcuwezlacf"
+
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# celery -A config worker --loglevel=INFO --pool=solo

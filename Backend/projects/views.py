@@ -1,3 +1,5 @@
+from django.db import transaction
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
@@ -9,7 +11,7 @@ from accounts.models import User
 from audits.models import Audit,AuditorAssignment
 from .models import Project,ProjectMember
 from .serializers import ProjectSerializer,ProjectMemberSerializer
-
+from audits.tasks import send_project_created_notification
 
 class ProjectViewSet(ModelViewSet):
     serializer_class = ProjectSerializer
@@ -57,8 +59,10 @@ class ProjectViewSet(ModelViewSet):
         return queryset.none()
 
     def perform_create(self, serializer):
-        serializer.save(
-            project_owner=self.request.user
+        project = serializer.save(project_owner=self.request.user)
+
+        transaction.on_commit(
+            lambda: send_project_created_notification.delay(project.id)
         )
 
 

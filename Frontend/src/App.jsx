@@ -21,6 +21,7 @@ import ChecklistDetailPage from "./pages/checklists/ChecklistDetailPage";
 import FrameworksPage from "./pages/FrameworksPage";
 import DepartmentsPage from "./pages/DepartmentsPage";
 import OrientationsPage from "./pages/OrientationsPage";
+import AnnualAuditPlanPage from "./pages/AnnualAuditPlanPage";
 
 const { DIRECTOR, QMS, EMPLOYEE } = ROLES;
 
@@ -58,6 +59,7 @@ export default function App() {
                                 <Route path="/frameworks" element={guarded(<FrameworksPage />, STAFF)} />
                                 <Route path="/departments" element={guarded(<DepartmentsPage />, STAFF)} />
                                 <Route path="/orientations" element={guarded(<OrientationsPage />, [QMS, EMPLOYEE])} />
+                                <Route path="/qms/annual-audit-plan" element={<AnnualAuditPlanPage />} />
                             </Route>
 
                             <Route path="*" element={<Navigate to="/dashboard" replace />} />

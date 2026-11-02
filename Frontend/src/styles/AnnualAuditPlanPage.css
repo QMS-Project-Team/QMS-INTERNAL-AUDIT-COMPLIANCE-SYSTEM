@@ -1,0 +1,229 @@
+
+.annual-plan-page {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px;
+  box-sizing: border-box;
+  color: #1f2937;
+}
+
+.annual-plan-heading {
+  margin-bottom: 24px;
+}
+
+.annual-plan-eyebrow {
+  margin: 0 0 8px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+.annual-plan-heading h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 750;
+}
+
+.annual-plan-heading > div > p:last-child {
+  margin: 8px 0 0;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.annual-plan-card {
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgb(15 23 42 / 5%);
+}
+
+.annual-plan-card-heading {
+  padding-bottom: 22px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.annual-plan-card-heading h2 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.annual-plan-card-heading p {
+  margin: 7px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.annual-plan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 24px;
+}
+
+.annual-plan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.annual-plan-field label {
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.annual-plan-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  font: inherit;
+}
+
+.annual-plan-field input:focus {
+  outline: 2px solid #bfdbfe;
+  border-color: #2563eb;
+}
+
+.annual-plan-year {
+  max-width: 260px;
+}
+
+.audit-cycle-section {
+  padding: 22px;
+  border: 1px solid #e5e7eb;
+  border-radius: 11px;
+  background: #fafbfc;
+}
+
+.audit-cycle-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.audit-cycle-number {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 750;
+}
+
+.audit-cycle-number.cycle-two {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.audit-cycle-heading h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.audit-cycle-heading p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.audit-cycle-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.annual-plan-alert {
+  margin-top: 20px;
+  padding: 13px 15px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.annual-plan-alert.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.annual-plan-alert.success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.annual-plan-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.annual-plan-actions button {
+  min-height: 43px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.annual-plan-cancel {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.annual-plan-submit {
+  background: #2457d6;
+  color: #fff;
+  border: 1px solid #2457d6;
+}
+
+.annual-plan-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 650px) {
+  .annual-plan-page {
+    padding: 18px;
+  }
+
+  .annual-plan-card {
+    padding: 18px;
+  }
+
+  .audit-cycle-section {
+    padding: 16px;
+  }
+
+  .audit-cycle-fields {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .annual-plan-actions {
+    flex-direction: column-reverse;
+  }
+
+  .annual-plan-actions button {
+    width: 100%;
+  }
+}
